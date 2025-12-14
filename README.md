@@ -90,7 +90,4 @@ manifest
 ## 🙏 Remerciements & crédit
 
 Cette intégration est rendue possible grâce :
-
-au travail original autour de l’API Indevolt, 
-le soutien de MaterFrance,
-et à la collaboration de Charmg31 et Wellgo
+à la collaboration de Charmg31, Wellgo et le soutien de MaterFrance
