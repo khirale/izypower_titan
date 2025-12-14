@@ -2,7 +2,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "izypower_titan"
 DEFAULT_PORT = 8080
-DEFAULT_SCAN_INTERVAL = 30
+DEFAULT_SCAN_INTERVAL = 5
 
 DEFAULT_MAX_CHARGE_POWER = 1200  # Watts
 DEFAULT_MAX_DISCHARGE_POWER = 800  # Watts
@@ -109,3 +109,4 @@ ID_META = {
     11019: {"key": "remaining_charging_time", "name": "TITAN - Remaining Charging Time", "unit": "min", "state_class": "measurement"},  # 9999 min
     11020: {"key": "residual_discharge_time", "name": "TITAN - Residual Discharge Time", "unit": "min", "state_class": "measurement"},  # 304 min
 }
+
