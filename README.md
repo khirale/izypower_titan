@@ -49,11 +49,11 @@ Attention: il faudra utiliser l'application Energy Ease pour activer l'API local
 Une fois que vous avez installé l'application et ajouté votre batterie vous serez en mesure d'activer l'API local. CF screen en dessous
 <img width="1518" height="3128" alt="README_HACS_steps_1-4_grid" src="https://github.com/user-attachments/assets/ca03301d-4929-401a-99ca-75b690caad0f" />
 
-Installation HACS
+Installation HACS:
 Comme pour les autres intégration communautaire ;)
 Copier coller le lien du git: https://github.com/khirale/izypower_titan.git
 
-Installation manuelle
+Installation manuelle:
 Copier le dossier izypower_titan dans :
 /config/custom_components/
 
