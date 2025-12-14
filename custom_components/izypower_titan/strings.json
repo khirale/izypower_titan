@@ -1,0 +1,41 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connexion à votre appareil Izypower",
+        "description": "Entrez les informations de connexion de votre appareil.",
+        "data": {
+          "host": "Adresse IP",
+          "port": "Port",
+          "scan_interval": "Intervalle de mise à jour (secondes)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Échec de la connexion. Vérifiez l’adresse IP et le port, et assurez-vous que l’appareil est en ligne.",
+      "unknown": "Une erreur inconnue est survenue. Consultez les journaux de Home Assistant pour plus de détails.",
+      "invalid_port": "Le port doit être compris entre 1 et 65535."
+    },
+    "abort": {
+      "already_configured": "Cet appareil a déjà été configuré."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Paramètres Izypower",
+        "description": "Configurez les limites de puissance et l’intervalle de mise à jour.\n\n{charge_info}\n{discharge_info}\n\nRemarque : définir des limites inférieures aux valeurs maximales de l’appareil peut aider à préserver la durée de vie de la batterie et à respecter les réglementations locales.",
+        "data": {
+          "scan_interval": "Intervalle de mise à jour (secondes)",
+          "max_charge_power": "Puissance maximale de charge (W)",
+          "max_discharge_power": "Puissance maximale de décharge (W)"
+        },
+        "data_description": {
+          "scan_interval": "Fréquence d’interrogation de l’appareil pour récupérer de nouvelles données (5 à 300 secondes).",
+          "max_charge_power": "Puissance maximale de charge autorisée en Watts (100 à 2000 W). L’appareil rejettera les commandes dépassant cette limite.",
+          "max_discharge_power": "Puissance maximale de décharge autorisée en Watts (100 à 2000 W). L’appareil rejettera les commandes dépassant cette limite."
+        }
+      }
+    }
+  }
+}

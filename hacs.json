@@ -1,0 +1,7 @@
+{
+  "name": "Izypower Titan",
+  "content_in_root": false,
+  "country": "FR",
+  "domains": ["sensor"],
+  "homeassistant": "2025.0.0"
+}
