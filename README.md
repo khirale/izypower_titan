@@ -50,17 +50,17 @@ Une fois que vous avez installé l'application et ajouté votre batterie vous se
 <img width="1518" height="3128" alt="README_HACS_steps_1-4_grid" src="https://github.com/user-attachments/assets/ca03301d-4929-401a-99ca-75b690caad0f" />
 
 Installation HACS:
-Comme pour les autres intégration communautaire ;)
-Copier coller le lien du git: https://github.com/khirale/izypower_titan.git
+- Comme pour les autres intégration communautaire ;)
+- Copier coller le lien du git: https://github.com/khirale/izypower_titan.git
 
 Installation manuelle:
-Copier le dossier izypower_titan dans :
-/config/custom_components/
+- Copier le dossier izypower_titan dans :
+  /config/custom_components/
 
-Puis redémarrer Home Assistant.
+- Puis redémarrer Home Assistant.
 
-Enfin, dans Home Assistant :
-Paramètres → Appareils & Services → Ajouter une intégration → Izypower Titan
+- Enfin, dans Home Assistant :
+  - Paramètres → Appareils & Services → Ajouter une intégration → Izypower Titan
 
 ## ⚙️ Configuration
 Informations nécessaires :
