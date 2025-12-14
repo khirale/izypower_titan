@@ -17,7 +17,6 @@ Accès aux données internes (production, batterie, puissance AC/DC…)
 
 Capteur d’état de connectivité (OK / KO)
 
-
 Possibilité d’enregistrer plusieurs Titans
 
 
@@ -92,6 +91,6 @@ manifest
 
 Cette intégration est rendue possible grâce :
 
-au travail original autour de l’API Indevolt,
-
+au travail original autour de l’API Indevolt, 
+le soutien de MaterFrance,
 et à la collaboration de Charmg31 et Wellgo
