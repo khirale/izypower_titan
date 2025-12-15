@@ -71,7 +71,7 @@ ID_META = {
     
     # Production/Energie
     1502:  {"key": "daily_production", "name": "TITAN - Daily Production", "unit": "kWh", "dev_class": "energy", "state_class": "total"},
-    1505:  {"key": "cumulative_production", "name": "TITAN - Cumulative Production", "unit": "kWh", "dev_class": "energy", "state_class": "total_increasing"},
+    1505: {"key": "cumulative_production", "name": "TITAN - Cumulative Production", "unit": "kWh", "dev_class": "energy", "state_class": "total"},  # ← total au lieu de total_increasing
     2101:  {"key": "total_ac_input_power", "name": "TITAN - Total AC Input Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
     2107:  {"key": "total_ac_input_energy", "name": "TITAN - Total AC Input Energy", "unit": "kWh", "dev_class": "energy", "state_class": "total_increasing"},
     142:   {"key": "rated_capacity", "name": "TITAN - Rated Capacity", "unit": "kWh", "dev_class": "energy_storage", "state_class": None},
@@ -109,4 +109,5 @@ ID_META = {
     11019: {"key": "remaining_charging_time", "name": "TITAN - Remaining Charging Time", "unit": "min", "state_class": "measurement"},  # 9999 min
     11020: {"key": "residual_discharge_time", "name": "TITAN - Residual Discharge Time", "unit": "min", "state_class": "measurement"},  # 304 min
 }
+
 
