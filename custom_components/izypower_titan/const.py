@@ -53,7 +53,7 @@ ID_META = {
     0:     {"key": "device_sn", "name": "TITAN - Device SN"},
     
     # Cluster
-    606:   {"key": "cluster_state", "name": "TITAN - Cluster State", "dev_class": "enum", "state_mapping": {1000: "Master", 1001: "Slave", None: "No Cluster", -1: "Unknown"}},
+    606:   {"key": "cluster_state", "name": "TITAN - Cluster State", "dev_class": "enum", "state_mapping": {1000: "Master", 1001: "Slave", 1002: "No Cluster", -1: "Unknown"}},
     
     # Mode de fonctionnement
     7101:  {"key": "working_mode", "name": "TITAN - Working Mode","dev_class": "enum", "state_mapping": {0: "Standby", 1: "Self-consumed", 2: "Backup", 3: "Schedule", 4: "Intelligent", 5: "Manual", 6: "Off-grid", 7: "Zero Export", -1: "Unknown"}},
@@ -79,7 +79,7 @@ ID_META = {
     # Batterie TITAN principale
     6000:  {"key": "battery_power", "name": "TITAN - Battery Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
     6001:  {"key": "battery_state", "name": "TITAN - Battery State", "dev_class": "enum", "state_mapping": {1000: "Static", 1001: "Charging", 1002: "Discharging", -1:"Unknown"}},
-    6002:  {"key": "battery_soc", "name": "TITAN - Battery SOC", "unit": "%", "dev_class": "battery", "state_class": "measurement"},
+    6002:  {"key": "battery_soc", "name": "TITAN - Battery Pile %", "unit": "%", "dev_class": "battery", "state_class": "measurement"},
     6009:  {"key": "battery_titan_level", "name": "TITAN - Battery %", "unit": "%", "dev_class": "battery", "state_class": "measurement"},
     11009:  {"key": "charging_power", "name": "TITAN - Charging Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
     11011:  {"key": "discharging_power", "name": "TITAN - Discharging Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
@@ -88,7 +88,7 @@ ID_META = {
 
     
     # Energie batterie
-    6105:  {"key": "emergency_power_supply", "name": "TITAN - Emergency Power Supply", "unit": "%", "state_class": "measurement"},
+    6105:  {"key": "emergency_power_supply", "name": "TITAN - Battery SOC", "unit": "%", "state_class": "measurement"},
     6004:  {"key": "battery_daily_charging_energy", "name": "TITAN - Battery Daily Charging Energy", "unit": "kWh", "dev_class": "energy", "state_class": "total"},
     6005:  {"key": "battery_daily_discharging_energy", "name": "TITAN - Battery Daily Discharging Energy", "unit": "kWh", "dev_class": "energy", "state_class": "total"},
     6006:  {"key": "battery_total_charging_energy", "name": "TITAN - Battery Total Charging Energy", "unit": "kWh", "dev_class": "energy", "state_class": "total_increasing"},
@@ -109,5 +109,6 @@ ID_META = {
     11019: {"key": "remaining_charging_time", "name": "TITAN - Remaining Charging Time", "unit": "min", "state_class": "measurement"},  # 9999 min
     11020: {"key": "residual_discharge_time", "name": "TITAN - Residual Discharge Time", "unit": "min", "state_class": "measurement"},  # 304 min
 }
+
 
 
