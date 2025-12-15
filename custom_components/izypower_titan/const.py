@@ -79,7 +79,7 @@ ID_META = {
     # Batterie TITAN principale
     6000:  {"key": "battery_power", "name": "TITAN - Battery Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
     6001:  {"key": "battery_state", "name": "TITAN - Battery State", "dev_class": "enum", "state_mapping": {1000: "Static", 1001: "Charging", 1002: "Discharging", -1:"Unknown"}},
-    6002:  {"key": "battery_soc", "name": "TITAN - Battery Pile %", "unit": "%", "dev_class": "battery", "state_class": "measurement"},
+    6002:  {"key": "battery_soc", "name": "TITAN - Pile Average", "unit": "%", "dev_class": "battery", "state_class": "measurement"},
     6009:  {"key": "battery_titan_level", "name": "TITAN - Battery %", "unit": "%", "dev_class": "battery", "state_class": "measurement"},
     11009:  {"key": "charging_power", "name": "TITAN - Charging Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
     11011:  {"key": "discharging_power", "name": "TITAN - Discharging Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
@@ -109,6 +109,7 @@ ID_META = {
     11019: {"key": "remaining_charging_time", "name": "TITAN - Remaining Charging Time", "unit": "min", "state_class": "measurement"},  # 9999 min
     11020: {"key": "residual_discharge_time", "name": "TITAN - Residual Discharge Time", "unit": "min", "state_class": "measurement"},  # 304 min
 }
+
 
 
 
