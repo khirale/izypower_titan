@@ -53,7 +53,7 @@ ID_META = {
     0:     {"key": "device_sn", "name": "TITAN - Device SN"},
     
     # Cluster
-    606:   {"key": "cluster_state", "name": "TITAN - Cluster State", "dev_class": "enum", "state_mapping": {1000: "Master", 1001: "Slave", None: "No Cluster", -1: "Unknown"}},
+    606:   {"key": "cluster_state", "name": "TITAN - Cluster State", "dev_class": "enum", "state_mapping": {1000: "Master", 1001: "Slave", 1002: "Error", None: "No Cluster", -1: "Unknown"}},
     
     # Mode de fonctionnement
     7101:  {"key": "working_mode", "name": "TITAN - Working Mode","dev_class": "enum", "state_mapping": {0: "Standby", 1: "Self-consumed", 2: "Backup", 3: "Schedule", 4: "Intelligent", 5: "Manual", 6: "Off-grid", 7: "Zero Export", -1: "Unknown"}},
@@ -109,4 +109,5 @@ ID_META = {
     11019: {"key": "remaining_charging_time", "name": "TITAN - Remaining Charging Time", "unit": "min", "state_class": "measurement"},  # 9999 min
     11020: {"key": "residual_discharge_time", "name": "TITAN - Residual Discharge Time", "unit": "min", "state_class": "measurement"},  # 304 min
 }
+
 
