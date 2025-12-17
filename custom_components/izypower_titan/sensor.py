@@ -169,14 +169,8 @@ class IzypowerSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
                 return None
 
         if self.entity_description.state_class == SensorStateClass.TOTAL_INCREASING:
-            if self._last_valid_value is not None:
-                if new_value < (self._last_valid_value - 0.1):
-                    _LOGGER.warning("%s → Reset de compteur détecté (nouveau: %s, ancien: %s). "
-                        "Conservation de l'ancienne valeur.",
-                        self.entity_id, new_value, self._last_valid_value
-                    )
-                    return self._last_valid_value
             self._last_valid_value = new_value
+            return new_value
 
         return new_value
 
@@ -312,3 +306,4 @@ class IzypowerConnectivityUptimeSensor(CoordinatorEntity, SensorEntity, RestoreE
             "total": self._total,
             "day": self._day,
         }
+
