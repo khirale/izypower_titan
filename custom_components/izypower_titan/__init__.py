@@ -28,6 +28,7 @@ from .const import (
     DISCHARGE_PER_TITAN,
     CONF_CONNECTION_MODE,
     MODE_CLOUD,
+    MAX_ABS_PER_TITAN,
     
 )
 from .coordinator import IzypowerTitanCoordinator
