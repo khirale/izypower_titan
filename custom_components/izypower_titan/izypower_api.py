@@ -19,15 +19,87 @@ class IzypowerAPI:
         config_param = json.dumps({"t": keys}).replace(" ", "")
         url = f"{self.base_url}/Indevolt.GetData?config={config_param}"
         
+        #_LOGGER.debug("Titan request → %s", url)
+
+        try:
+            async with self.session.post(url, timeout=self.timeout) as response:
+                status = response.status
+                raw_text = await response.text()
+
+                #_LOGGER.debug("Titan response ← status=%s, raw=%s", status,  raw_text)
+
+                if status != 200:
+                    raise Exception(f"HTTP {status}: {raw_text}")
+
+                try:
+                    data = json.loads(raw_text)
+
+                except json.JSONDecodeError as err:
+                    _LOGGER.error("Titan response is NOT JSON (%s) | raw=%s", err, raw_text)
+                    raise
+
+                if not isinstance(data, dict):
+                    _LOGGER.error("Titan JSON is not a dict (%s) | value=%s", type(data), data)
+                    raise Exception("Invalid JSON structure")
+
+                #_LOGGER.debug("Titan JSON parsed successfully (%d keys)", len(data))
+
+                return data
+
+        except asyncio.TimeoutError:
+            _LOGGER.error("Titan request TIMEOUT")
+            raise
+
+        except aiohttp.ClientError as err:
+            _LOGGER.error("Titan NETWORK error: %s", err)
+            raise
+
+
+    async def set_data(self, f: int, t: int, v: list) -> dict[str, Any]:
+        config_param = json.dumps({"f": f, "t": t, "v": v}).replace(" ", "")
+        url = f"{self.base_url}/Indevolt.SetData?config={config_param}"
+        
         try:
             async with self.session.post(url, timeout=self.timeout) as response:
                 if response.status != 200:
-                    import logging
-                    _LOGGER.debug("Titan HTTP error status received: %s", response.status)
                     raise Exception(f"HTTP status error: {response.status}")
                 return await response.json()
-                
+
         except asyncio.TimeoutError:
-            raise Exception("Indevolt.GetData Request timed out")
+            raise Exception("Indevolt.SetData Request timed out")
         except aiohttp.ClientError as err:
-            raise Exception(f"Indevolt.GetData Network error: {err}")
+            raise Exception(f"Indevolt.SetData Network error: {err}")
+    
+
+    async def async_set_realtime_mode(self) -> dict[str, Any]:
+        return await self.set_data(f=16, t=47005, v=[4])
+        
+
+    async def async_set_selfconsumed_mode(self) -> dict[str, Any]:
+        return await self.set_data(f=16, t=47005, v=[1])
+
+
+    async def async_charge(self, power: int, soc_limit: int, max_power: int) -> dict[str, Any]:
+        if not 0 <= power <= max_power:
+            raise ValueError(f"Charging power must be 0-{max_power}W, got {power}W")
+        if not 0 <= soc_limit <= 100:
+            raise ValueError(f"SOC limit must be 0-100%, got {soc_limit}%")
+        
+        return await self.set_data(f=16, t=47015, v=[1, power, soc_limit])
+
+
+    async def async_discharge(self, power: int, soc_limit: int, max_power: int) -> dict[str, Any]:
+        if not 0 <= power <= max_power:
+            raise ValueError(f"Discharging power must be 0-{max_power}W, got {power}W")
+        if not 0 <= soc_limit <= 100:
+            raise ValueError(f"SOC limit must be 0-100%, got {soc_limit}%")
+        
+        return await self.set_data(f=16, t=47015, v=[2, power, soc_limit])
+
+
+    async def async_stop(self) -> dict[str, Any]:
+        return await self.set_data(f=16, t=47015, v=[0, 0, 0])
+
+
+    async def async_set_working_mode(self, mode: int):
+        return await self.set_data(f=16, t=47005, v=[mode])

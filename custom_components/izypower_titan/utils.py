@@ -15,7 +15,7 @@ def normalize_unit(unit: str | None):
         return UnitOfEnergy.KILO_WATT_HOUR
     if u in ("%", "percent", "percentage"):
         return PERCENTAGE
-    return unit  # fallback (par exemple °C, V, etc.)
+    return unit
 
 
 def map_device_class(dc: str | None):

@@ -1,0 +1,66 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configuration Izypower Titan",
+        "description": "Configurez les paramètres généraux de votre installation Izypower Titan.",
+        "data": {
+          "connection_mode": "Mode de fonctionnement",
+          "titan_count": "Nombre total de Titans",
+          "port": "Port",
+          "scan_interval": "Intervalle de rafraîchissement (secondes)"
+        }
+      },
+
+      "hosts": {
+        "title": "Configuration des Titans",
+        "description": "Renseignez les adresses IP des Titans composant votre installation.",
+        "data": {
+          "ip_master": "Adresse IP du Master",
+          "ip_slave_1": "Adresse IP du Slave 1",
+          "ip_slave_2": "Adresse IP du Slave 2"
+        }
+      },
+
+      "cloud": {
+        "title": "Authentification Cloud",
+        "description": "Veuillez saisir vos identifiants Izypower pour le mode Smart IA (Cloud).",
+        "data": {
+          "username": "Email",
+          "password": "Mot de passe"
+        }
+      },
+
+      "responsibility": {
+        "title": "Sécurité et responsabilité",
+        "description": "D'après votre configuration ({count} Titan(s)), les limites de sécurité par défaut sont :\n\n- Charge max : {charge} W\n- Décharge max : {discharge} W\n\n⚠️ AVERTISSEMENT : Modifier ces valeurs peut endommager votre matériel.",
+        "data": {
+          "override_responsibility": "Je souhaite personnaliser les puissances et j'accepte les risques associés."
+        }
+      },
+
+      "power_override": {
+        "title": "Réglages de puissance personnalisés",
+        "description": "⚠️ ATTENTION\n\nVous avez choisi d'outrepasser les limites de sécurité.\n\nLa limite absolue pour votre configuration est de {max_abs} W.",
+        "data": {
+          "max_charge_power": "Puissance maximale de charge (W)",
+          "max_discharge_power": "Puissance maximale de décharge (W)"
+        }
+      },
+
+      "summary": {
+        "title": "Résumé final",
+        "description": "{summary_text}"
+      }
+    },
+
+    "error": {
+      "cannot_connect": "Impossible de contacter la Titan à cette adresse IP.",
+      "invalid_auth": "Identifiants Cloud invalides.",
+      "cloud_cannot_connect": "Impossible de se connecter au service Cloud.",
+      "exceed_absolute_limit": "Dépassement de la limite absolue autorisée.",
+      "cluster_slave_detected": "L’équipement interrogé est déclaré comme SLAVE. L’adresse IP renseignée comme master est incorrecte.",
+      "cannot_read_cluster_state": "Impossible de lire l’état du cluster (ID 606)."
+    }
+  }
+}

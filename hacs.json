@@ -3,5 +3,5 @@
   "content_in_root": false,
   "country": "FR",
   "domains": ["sensor"],
-  "homeassistant": "2025.0.0"
+  "homeassistant": "2026.1.0"
 }

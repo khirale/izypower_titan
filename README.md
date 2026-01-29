@@ -1,93 +1,143 @@
-## Izypower Titan — Intégration Home Assistant
-
-Cette intégration permet à Home Assistant de dialoguer localement avec un ou plusieurs appareils Izypower Titan, afin de récupérer leurs données.
-
-Elle est basée sur l’intégration Indevolt et sur le travail de Speedy2524, disponible ici :
-https://github.com/Speedy2524/homeassistant-indevolt
-
-Une partie du code, des concepts et de la structure provient de ce projet, qui a permis la création de cette adaptation pour les appareils Titan Izypower.
-
-## ✨ Fonctionnalités
-
-Communication entièrement en local (aucun cloud requis)
-
-Détection automatique du Titan et récupération du numéro de série
-
-Accès aux données internes (production, batterie, puissance AC/DC…)
-
-Capteur d’état de connectivité (OK / KO)
-
-Possibilité d’enregistrer plusieurs Titans
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz)
+[![Version](https://img.shields.io/badge/version-2.0-brightgreen)](../../releases)
 
 
-## 🧱 Structure de l’intégration
+## ⚡ Izypower Titan – Intégration Home Assistant
 
-Composants principaux :
-- gestion de configuration et options
-config_flow
+Intégration Home Assistant permettant le suivi complet et le pilotage avancé des batteries Izypower Titan, en local (MR1) ou via le Cloud (Smart IA).
 
-- définition des IDs et métadonnées capteurs
-const
+<p align="center">
+  <a href="https://buymeacoffee.com/khirale">
+    <img
+      src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png"
+      alt="Buy Me a Coffee"
+      height="45"
+    >
+  </a>
+</p>
 
-- coordinateur de mise à jour
-coordinator
 
-- API d’échange avec l’appareil
-izypower_api
+## 🚧 Installation:
+![Status](https://img.shields.io/badge/status-warning-orange)
+**ATTENTION**, il s'agit d'une nouvelle intégration donc si vous aviez déja l'intégration de configurer dans votre Home Assistant vous devez:
+- **Supprimer les Titans déja intégrées**
+- **Redémarrer Home Assistant**
+- Mettre à jour l'intégration via HACS
+- Redémarrer Home Assistant
+- Réintégrer les titans avec le nouveau formulaire
 
-- création des entités Home Assistant
-sensor
+Pour tous les nouveaux utilisateurs, il s'agit d'une installation classique via HACS:
+- Ajout du dépots
+- Télécharger
+- Redémarrer Home Assistant
+- Configurer l'intégration
 
-- déclaration générale de l’intégration
-manifest
+## 🧩 Que permet cette intégration ?
+📊 **Supervision complète**
 
-Les valeurs brutes renvoyées par le Titan sont normalisées et converties en entités cohérentes dans Home Assistant (unités, classes, mapping enum…), grâce notamment à :
--utils
+L’intégration expose automatiquement :
 
-## 🔧 Installation
-Installation HACS:
-- Comme pour les autres intégration communautaire ;)
-- Copier coller le lien du git: https://github.com/khirale/izypower_titan.git
+- Production photovoltaïque (PV1 à PV4)
+- Puissance AC entrée / sortie
+- Énergie cumulée importée / exportée
+- État et puissance batterie
+- SOC batterie (%)
+- Températures batterie
+- Mode de fonctionnement (Standby, Self-consumed, Intelligent, etc.)
+- Statut de connectivité locale
+- Statut Cloud
+- Découverte automatique des batteries LINK
+- etc.
 
-Installation manuelle:
-- Copier le dossier izypower_titan dans :
-  /config/custom_components/
+👉 Toutes les données sont locales, avec restauration d’état après redémarrage.
 
-- Puis redémarrer Home Assistant.
 
-- Enfin, dans Home Assistant :
-  - Paramètres → Appareils & Services → Ajouter une intégration → Izypower Titan
+🎛️ **Pilotage de la batterie**
+<img width="1536" height="1024" alt="visuel" src="https://github.com/user-attachments/assets/c90f5054-91ab-4039-a0cf-3a017fe9a921" />
 
-## ⚙️ Configuration
-Informations nécessaires :
-IP du Titan
-Port (par défaut 8080)
-Intervalle de rafraîchissement
 
-La connexion initiale vérifie l’accessibilité du module via :
-config_flow
 
-## 📡 Fiabilité & tolérance aux erreurs
+Deux modes de pilotage sont disponibles selon le Smart Meter que vous utilisez :
 
-Le coordinateur :
-- interroge le Titan à intervalle régulier
-- mémorise les valeurs connues si aucune donnée ne revient
-- gère et journalise les erreurs éventuelles
-- indique l’état de connectivité via un capteur dédié
+| Meter	| Mode	| Communication |
+|-----------|-----------|-----------|
+| MR1	| Local	| Directement avec la Titan (LAN) |
+| Smart IA	| Cloud	| Via l’API officielle Izypower |
 
-Fonctionnement détaillé :
-coordinator
+Listes de commandes disponibles par type de meter:
+| Commande                                     | Smart&nbsp;IA | MR1 | Paramètres                                                                                                                     |
+| -------------------------------------------- | :--------: | :---: | ------------------------------------------------------------------------------------------------------------------------------ |
+| **Charge**                                   | ✅        | ✅   | Puissance de charge et **SOC limite de charge** (% de batterie à partir duquel la charge s’arrête automatiquement, ex. : 95 %) |
+| **Décharge**                                 | ❌        | ✅   | Puissance de décharge. La batterie s’arrête automatiquement lorsque le **SOC de sécurité** est atteint                         |
+| **Standby**                                  | ✅        | ✅   | Met la batterie en état de veille                                                                                              |
+| **Mode&nbsp;intelligent**                         | ✅        | ❌   | Bascule la batterie en mode *Intelligent*                                                                                      |
+| **Mode&nbsp;self-consumed**                       | ❌        | ✅   | Bascule la batterie en mode *Self-consumed* (autoconsommation)                                                                 |
+| **Mode&nbsp;Real-Time**                           | ❌        | ✅   | Permet à la batterie d’accepter les commandes locales — **obligatoire pour les utilisateurs MR1**                              |
+| **Mode&nbsp;manuel**                              | ✅        | ✅   | Bascule la batterie en mode manuel <br>*(pour Smart IA, ce mode est inclus dans les commandes Charge et Standby)*              |
+| **Puissance&nbsp;de&nbsp;charge<br>(mode manuel)**        | ✅        | ✅   | Modifie la puissance de charge en mode manuel                                                                                  |
+| **SOC&nbsp;de&nbsp;charge&nbsp;max<br>(mode manuel)**          | ✅        | ✅   | Modifie le SOC maximum de charge en mode manuel                                                                                |
+| **Puissance&nbsp;de&nbsp;décharge<br>(mode manuel)**      | ❌        | ✅   | Modifie la puissance de décharge en mode manuel                                                                                |
+| **Puissance&nbsp;de&nbsp;charge<br>(mode intelligent)**   | ✅        | ❌   | Modifie la puissance de charge en mode Intelligent                                                                             |
+| **Puissance&nbsp;de&nbsp;décharge<br>(mode intelligent)** | ✅        | ❌   | Modifie la puissance de décharge en mode Intelligent                                                                           |
 
-## 🔒 Fonctionnement local
-aucune requête externe
-aucun cloud utilisé
-aucune transmission vers Izypower
-aucune dépendance vers un service Internet
 
-Déclaré en local_polling dans le manifest :
-manifest
+## 🔧 Fonctionnement du pilotage
+**Pour le MR1 :**
+Il est obligatoire de basculer la Titan en mode Real-Time
+(via le bouton physique ou le service associé).
+
+⚠️ **Cas des installations en cluster**
+
+Les Titans slaves ne passent pas visuellement en mode Real-Time.
+Elles restent affichées en mode Self-consumed (autoconsommation), mais restent entièrement pilotées par la Titan master.
+
+➡️ Il s’agit d’un problème uniquement visuel, sans impact fonctionnel.
+Une correction est prévue dans une version future.
+
+| Paramètre	| Type	| Description |
+|-----------|-----------|-----------|
+| Charge / Discharge Power	| Slider	| Puissance cible (W) |
+| Charge SOC Max	| Slider	| SOC maximum autorisé (%) |
+
+## 🔁 Exemple de pilotage – Mode MR1 (Local)
+🚧 **Toujours utiliser le Real-Time mode** avant de lancer des commandes sur les Titans (Disponible via le bouton)
+
+Forcer une charge locale contrôlée.
+
+**Étapes**
+
+1️⃣ **Régler les paramètres**
+
+**Charge / Discharge Power** → 800 W à 7200 W (selon votre configuration)
+
+**Charge SOC Max** → 100 %
+(plage 0–100 % : la charge s’arrête automatiquement lorsque le SOC atteint cette valeur)
+
+2️⃣ Utiliser les boutons
+
+**MR1 Real-Time mode**
+
+**MR1 Start Charge**
+
+➡️ Fonctionne même sans Internet.
+
+## 🔁 Exemple de pilotage – Mode Smart IA (Cloud)
+Forcer une charge intelligente via le Cloud Izypower.
+
+**Étapes**
+
+1️⃣ **Régler le slider**
+
+**Charge / Discharge Power** → 800 W à 7200 W (selon votre configuration)
+
+**Charge SOC Max** → 100 %
+(plage 0–100 % : la charge s’arrête automatiquement lorsque le SOC atteint cette valeur)
+
+2️⃣ **Appuyer sur**
+
+**Smart IA – Start Charge**
+
+➡️ Fonctionne uniquement via le Cloud Izypower.
 
 ## 🙏 Remerciements & crédit
-
-Cette intégration est rendue possible grâce :
-à la collaboration de Charmg31, Wellgo et le soutien de MaterFrance
+Cette intégration est rendue possible grâce à la collaboration de Charmg31 et Wellgo.

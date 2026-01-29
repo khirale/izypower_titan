@@ -1,11 +1,13 @@
 {
   "domain": "izypower_titan",
   "name": "Izypower Titan",
-  "version": "1.0.1",
+  "version": "1.2.0",
   "documentation": "https://github.com/khirale/izypower_titan",
   "issue_tracker": "https://github.com/khirale/izypower_titan",
   "codeowners": ["@khirale"],
-  "requirements": [],
+  "requirements": [
+    "pyjwt==2.10.1"
+  ],
   "dependencies": [],
   "config_flow": true,
   "iot_class": "local_polling"
