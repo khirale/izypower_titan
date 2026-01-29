@@ -35,10 +35,6 @@ from .coordinator import IzypowerTitanCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-
-# ---------------------------------------------------------
-# DYNAMIC SERVICE SCHEMAS
-# ---------------------------------------------------------
 def build_charge_schema(max_power: int) -> vol.Schema:
     return vol.Schema({
         vol.Required("power"): vol.All(cv.positive_int, vol.Range(min=0, max=max_power)),
@@ -71,9 +67,6 @@ SERVICE_CLOUD_DISCHARGE_SCHEMA = vol.Schema({
 })
 
 
-# ---------------------------------------------------------
-# SETUP
-# ---------------------------------------------------------
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     return True
 
@@ -152,9 +145,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         raise ConfigEntryNotReady from err
 
 
-# ---------------------------------------------------------
-# SERVICES
-# ---------------------------------------------------------
 async def async_register_services(hass: HomeAssistant) -> None:
     async def get_coordinator_from_call(call: ServiceCall,) -> "IzypowerTitanCoordinator":
         hass = call.hass
@@ -330,9 +320,6 @@ async def async_register_services(hass: HomeAssistant) -> None:
 
     _LOGGER.info("Izypower Titan services registered successfully.")
 
-# ---------------------------------------------------------
-# UNLOAD / UPDATE
-# ---------------------------------------------------------
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if DOMAIN not in hass.data or entry.entry_id not in hass.data[DOMAIN]:
         return True

@@ -42,16 +42,14 @@ class IzypowerAPI:
                     _LOGGER.error("Titan JSON is not a dict (%s) | value=%s", type(data), data)
                     raise Exception("Invalid JSON structure")
 
-                #_LOGGER.debug("Titan JSON parsed successfully (%d keys)", len(data))
-
                 return data
 
         except asyncio.TimeoutError:
-            _LOGGER.error("Titan request TIMEOUT")
+            _LOGGER.debug("Titan request TIMEOUT")
             raise
 
         except aiohttp.ClientError as err:
-            _LOGGER.error("Titan NETWORK error: %s", err)
+            _LOGGER.debug("Titan NETWORK error: %s", err)
             raise
 
 

@@ -10,7 +10,6 @@ from .const import CONF_TITAN_COUNT
 _LOGGER = logging.getLogger(__name__)
 
 class IzyCloudAPI:
-    """Interface avec l'API Cloud Izypower (Wellgo) - Version Fusionnée."""
     
     def __init__(self, username, password, session: aiohttp.ClientSession):
         self.username = username
@@ -31,7 +30,6 @@ class IzyCloudAPI:
         return f"{self.base_url}/v2/device/yz/battery"
 
     async def async_login(self) -> str | None:
-        """Authentification avec détection automatique multi-niveaux du token."""
         url = f"{self.base_url}/login"
         payload = {"username": self.username, "password": self.password}
         
@@ -66,7 +64,6 @@ class IzyCloudAPI:
             return None
 
     def is_token_valid(self) -> bool:
-        """Vérifie si le jeton JWT est présent et non expiré."""
         if not self.token:
             return False
         try:
@@ -76,7 +73,6 @@ class IzyCloudAPI:
               return True 
 
     async def async_get_headers(self) -> Dict[str, str]:
-        """Prépare les en-têtes avec reconnexion automatique."""
         if not self.is_token_valid():
             await self.async_login()
         
@@ -111,7 +107,6 @@ class IzyCloudAPI:
             return await resp.json()
 
     async def async_cloud_manual_standby(self, device_id: str) -> Dict[str, Any]:
-        """Met l'appareil en veille via le Cloud"""
         headers = await self.async_get_headers()
         url_mode = f"{self.battery_url}/mode/{device_id}"
         await self.session.post(url_mode, json={"ctr_mode": 1}, headers=headers, timeout=self.timeout)
@@ -122,7 +117,6 @@ class IzyCloudAPI:
             return await resp.json()
 
     async def async_intelligent_mode(self, device_id: str) -> Dict[str, Any]:
-        """Repasse l'appareil en mode automatique (Cloud)."""
         url = f"{self.battery_url}/mode/{device_id}"
         headers = await self.async_get_headers()
         async with self.session.post(url, json={"ctr_mode": 0}, headers=headers, timeout=self.timeout) as resp:

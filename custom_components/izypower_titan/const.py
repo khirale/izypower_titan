@@ -14,7 +14,7 @@ CONNECTION_MODE_LABELS = {
     MODE_LOCAL: "MR1",
     MODE_CLOUD: "Smart IA",
 }
-CONTROL = "selected"  # "" | "selected"
+CONTROL = "selected"
 
 CONF_TITAN_COUNT = "titan_count"
 CONF_OVERRIDE_RESPONSIBILITY = "override_responsibility"
@@ -188,8 +188,8 @@ ID_META = {
     9012:  {"key": "battery_temperature", "name": "TITAN - Battery Temperature", "unit": "°C", "dev_class": "temperature", "state_class": "measurement"},
 
     # Temps de charge/décharge
-    11019: {"key": "remaining_charging_time", "name": "TITAN - Remaining Charging Time", "unit": "min", "state_class": "measurement"},  # 9999 min
-    11020: {"key": "residual_discharge_time", "name": "TITAN - Residual Discharge Time", "unit": "min", "state_class": "measurement"},  # 304 min
+    11019: {"key": "remaining_charging_time", "name": "TITAN - Remaining Charging Time", "unit": "min", "state_class": "measurement"},
+    11020: {"key": "residual_discharge_time", "name": "TITAN - Residual Discharge Time", "unit": "min", "state_class": "measurement"},
 }
 
 

@@ -102,27 +102,6 @@ class IzypowerChargePowerNumber(IzypowerBaseNumber):
             self._value = min(500.0, self._attr_native_max_value)
 
 
-"""
-class IzypowerDischargePowerNumber(IzypowerBaseNumber):
-    profile = "common"
-    Puissance de décharge à utiliser quand on appuie sur le bouton Charge.
-
-    _attr_native_step = 50
-    _attr_native_unit_of_measurement = "W"
-
-    def __init__(self, coordinator):
-        super().__init__(coordinator, "discharge_power", "G Discharge power")
-
-        self._attr_native_min_value = 0
-        self._attr_native_max_value = float(
-            coordinator.config_entry.options.get("max_discharge_power",  coordinator.max_discharge_power)
-        )
-
-        if self._value is None:
-            self._value = min(500.0, self._attr_native_max_value)
-"""
-
-
 class IzypowerChargeSocLimitNumber(IzypowerBaseNumber):
     profile = "common"
 

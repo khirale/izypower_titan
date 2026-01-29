@@ -177,7 +177,6 @@ class IzypowerTitanDischargeButton(IzypowerTitanBaseButton):
 
 class IzypowerTitanCloudChargeButton(IzypowerTitanBaseButton):
     profile = "Smart IA"
-    """Bouton pour forcer une charge via l'API Cloud."""
     def __init__(self, coordinator):
         super().__init__(coordinator, "cloud_charge", "Start Charge")
 
