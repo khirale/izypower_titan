@@ -66,8 +66,8 @@ Deux modes de pilotage sont disponibles selon le Smart Meter que vous utilisez :
 Listes de commandes disponibles par type de meter:
 | Commande                                     | Smart&nbsp;IA | MR1 | Paramètres                                                                                                                     |
 | -------------------------------------------- | :--------: | :---: | ------------------------------------------------------------------------------------------------------------------------------ |
-| **Charge**                                   | ✅        | ✅   | Puissance de charge et **SOC limite de charge** (% de batterie à partir duquel la charge s’arrête automatiquement, ex. : 95 %) |
-| **Décharge**                                 | ❌        | ✅   | Puissance de décharge. La batterie s’arrête automatiquement lorsque le **SOC de sécurité** est atteint                         |
+| **Charge**                                   | ✅        | ✅   | Demande à la batterie de se charger en fonction de la puissance de charge et **SOC limite de charge** (% de batterie à partir duquel la charge s’arrête automatiquement, ex. : 95 %) |
+| **Décharge**                                 | ❌        | ✅   | Demande à la batterie de se décharger en fonction de la puissance de décharge. La batterie s’arrête automatiquement lorsque le **SOC de sécurité** est atteint                         |
 | **Standby**                                  | ✅        | ✅   | Met la batterie en état de veille                                                                                              |
 | **Mode&nbsp;intelligent**                         | ✅        | ❌   | Bascule la batterie en mode *Intelligent*                                                                                      |
 | **Mode&nbsp;self-consumed**                       | ❌        | ✅   | Bascule la batterie en mode *Self-consumed* (autoconsommation)                                                                 |
