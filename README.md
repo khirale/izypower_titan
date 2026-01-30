@@ -1,5 +1,6 @@
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz)
 [![Version](https://img.shields.io/badge/version-2.0-brightgreen)](../../releases)
+![GitHub all releases downloads](https://img.shields.io/github/downloads/khirale/izypower_titan/total?label=Total%20Downloads)
 ![GitHub downloads (last release)](https://img.shields.io/github/downloads/khirale/izypower_titan/latest/total)
 
 
