@@ -74,7 +74,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
 
     try:
-        titan_count = entry.data.get(CONF_TITAN_COUNT, 1)
+        titan_count = int(entry.data.get(CONF_TITAN_COUNT, 1))
         override = entry.data.get(CONF_OVERRIDE_RESPONSIBILITY, False)
 
         user_max_c = entry.options.get("max_charge_power")
@@ -369,4 +369,5 @@ async def async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None
         coordinator.max_charge_power,
         coordinator.max_discharge_power,
         max_abs,
+
     )
