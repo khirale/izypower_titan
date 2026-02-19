@@ -447,14 +447,16 @@ class IzypowerMaxDischargePowerNumber(CoordinatorEntity, NumberEntity, RestoreEn
         self._attr_name = "Max Discharge Power"
         self._attr_device_info = coordinator.device_info
 
-        from .const import CONF_TITAN_COUNT, CONF_OVERRIDE_RESPONSIBILITY, DISCHARGE_PER_TITAN, MAX_ABS_PER_TITAN
+        from .const import MAX_ABS_PER_TITAN
         
-        override = entry.data.get(CONF_OVERRIDE_RESPONSIBILITY, False)
+        configured_value = float(
+            entry.options.get(
+                "max_discharge_power",
+                coordinator.max_discharge_power,
+            )
+        )
         
-        if override:
-            self._attr_native_max_value = float(MAX_ABS_PER_TITAN)  # 2400W
-        else:
-            self._attr_native_max_value = float(DISCHARGE_PER_TITAN)  # 800W
+        self._attr_native_max_value = min(configured_value, float(MAX_ABS_PER_TITAN))
 
         self._value: float | None = None
 
