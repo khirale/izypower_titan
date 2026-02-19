@@ -42,14 +42,16 @@ class IzypowerAPI:
                     _LOGGER.error("Titan JSON is not a dict (%s) | value=%s", type(data), data)
                     raise Exception("Invalid JSON structure")
 
+                #_LOGGER.debug("Titan JSON parsed successfully (%d keys)", len(data))
+
                 return data
 
         except asyncio.TimeoutError:
-            _LOGGER.debug("Titan request TIMEOUT")
+            _LOGGER.error("Titan request TIMEOUT")
             raise
 
         except aiohttp.ClientError as err:
-            _LOGGER.debug("Titan NETWORK error: %s", err)
+            _LOGGER.error("Titan NETWORK error: %s", err)
             raise
 
 
@@ -101,3 +103,40 @@ class IzypowerAPI:
 
     async def async_set_working_mode(self, mode: int):
         return await self.set_data(f=16, t=47005, v=[mode])
+
+
+    async def async_set_register_off_grid(self, value: int) -> dict[str, Any]:
+        return await self.set_data(f=16, t=7266, v=[value])
+
+
+    async def async_set_register_led(self, value: int) -> dict[str, Any]:
+        return await self.set_data(f=16, t=7265, v=[value])
+
+
+    async def async_set_soc_security_register(self, value: int) -> dict[str, Any]:
+        from .const import SOC_SECURITY_MIN, SOC_SECURITY_MAX
+        
+        if not SOC_SECURITY_MIN <= value <= SOC_SECURITY_MAX:
+            raise ValueError(
+                f"SOC Security must be {SOC_SECURITY_MIN}-{SOC_SECURITY_MAX}%, got {value}%"
+            )
+        
+        return await self.set_data(f=16, t=1142, v=[value])
+
+
+    async def async_set_max_power_register(self, value: int, max_power: int) -> dict[str, Any]:
+        if not 100 <= value <= max_power:
+            raise ValueError(
+                f"Max Power must be 50-{max_power}W, got {value}W"
+            )
+        
+        return await self.set_data(f=16, t=1138, v=[value])
+
+
+    async def async_set_max_discharge_power_register(self, value: int, max_power: int) -> dict[str, Any]:
+        if not 0 <= value <= max_power:
+            raise ValueError(
+                f"Max Discharge Power must be 100-{max_power}W, got {value}W"
+            )
+        
+        return await self.set_data(f=16, t=1147, v=[value])

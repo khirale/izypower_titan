@@ -1,5 +1,37 @@
 from homeassistant.const import UnitOfPower, UnitOfEnergy, PERCENTAGE
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+import logging
+
+_LOGGER = logging.getLogger(__name__)
+
+
+def is_meter_connected(coordinator) -> bool:
+    data = coordinator.data or {}
+    raw_value = data.get("7120")
+    
+    if raw_value is None:
+        _LOGGER.debug("Sensor 7120 (meter_connection) not available")
+        return False
+    
+    try:
+        meter_state = int(float(raw_value))
+        is_connected = (meter_state == 1000)
+        
+        if not is_connected:
+            _LOGGER.debug(
+                "Meter not connected: sensor 7120 = %s (expected 1000)",
+                meter_state
+            )
+        
+        return is_connected
+        
+    except (TypeError, ValueError) as err:
+        _LOGGER.warning(
+            "Invalid value for sensor 7120 (meter_connection): %s (%s)",
+            raw_value,
+            err
+        )
+        return False
 
 
 def normalize_unit(unit: str | None):

@@ -14,6 +14,11 @@ CONNECTION_MODE_LABELS = {
     MODE_LOCAL: "MR1",
     MODE_CLOUD: "Smart IA",
 }
+
+
+ENTITY_SCOPE_CLUSTER = "cluster"
+ENTITY_SCOPE_UNIT = "unit"
+
 CONTROL = "selected"
 
 CONF_TITAN_COUNT = "titan_count"
@@ -22,6 +27,10 @@ CONF_OVERRIDE_RESPONSIBILITY = "override_responsibility"
 CHARGE_PER_TITAN = 800
 DISCHARGE_PER_TITAN = 800
 MAX_ABS_PER_TITAN = 2400
+
+SOC_SECURITY_MIN = 5
+SOC_SECURITY_MAX = 100
+SOC_SECURITY_STEP = 5
 
 CLUSTER_ROLE = "cluster_role"
 CLUSTER_MASTER = "master"
@@ -32,6 +41,7 @@ PLATFORMS = [
     Platform.SENSOR,
     Platform.BUTTON,
     Platform.NUMBER,
+    Platform.SWITCH,
 ]
 
 TITAN_IDS = [
@@ -40,7 +50,7 @@ TITAN_IDS = [
     7101,                         # Working mode ✅
     1664, 1665, 1666, 1667,       # DC Input Power 1..4 ✅
     1501,                         # Total DC Output Power ✅
-    2108,                         # Total AC Output Power ✅
+    #2108,                         # Total AC Output Power ✅
     #1502,                         # Daily Production ✅
     2101,                         # AC Input Power
     2107,                         # Total AC Input Energy ✅ Valeur Cluster
@@ -67,6 +77,8 @@ TITAN_IDS = [
     11011,                        # Discharging Power ✅
     2278,                         # Power Of Parallel Ac Input And Output ✅
     8100,                         # Alarm code ✅
+    680,                          # Backup ✅
+    7171,                         # LEDs State
 
 ]
 
@@ -151,9 +163,9 @@ ID_META = {
     1667:  {"key": "dc_input_power4", "name": "TITAN - DC Input Power 4", "unit": "W", "dev_class": "power", "state_class": "measurement"},
     
     # Puissance
-    1501:  {"key": "total_dc_output_power", "name": "TITAN - Total DC Output Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
-    2108:  {"key": "total_ac_output_power", "name": "TITAN - Total AC Output Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
-    2098:  {"key": "ac_output_power", "name": "TITAN - AC output", "unit": "W", "dev_class": "power", "state_class": "measurement"},
+    1501:  {"key": "dc_output_power", "name": "TITAN - DC Output Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
+    #2108:  {"key": "total_ac_output_power", "name": "TITAN - AC Output Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
+    2098:  {"key": "ac_output_power", "name": "TITAN - AC output Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
     2278:  {"key": "ac_input_output", "name": "TITAN - AC Input And Output", "unit": "W", "dev_class": "power", "state_class": "measurement"},
     
     # Production/Energie
@@ -183,6 +195,8 @@ ID_META = {
     11016: {"key": "meter_power", "name": "TITAN - Meter Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
     667:   {"key": "bypass_power", "name": "TITAN - Bypass Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
     8100:  {"key": "alarm_code", "name": "TITAN - Alarm", "dev_class": "enum", "state_mapping": ALARM_CODE_MAPPING},
+    680:   {"key": "backup", "name": "TITAN - Backup State", "dev_class": "enum", "state_mapping": {0: "OFF", 1: "ON"}},
+    7171:  {"key": "leds", "name": "TITAN - LEDs State", "dev_class": "enum", "state_mapping": {0: "OFF", 1: "ON"}},
     
     # Températures
     9012:  {"key": "battery_temperature", "name": "TITAN - Battery Temperature", "unit": "°C", "dev_class": "temperature", "state_class": "measurement"},

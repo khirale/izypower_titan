@@ -29,9 +29,11 @@ from .const import (
     CONF_CONNECTION_MODE,
     MODE_CLOUD,
     MAX_ABS_PER_TITAN,
-    
+    SOC_SECURITY_MIN,
+    SOC_SECURITY_MAX,
 )
 from .coordinator import IzypowerTitanCoordinator
+from .utils import is_meter_connected
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -51,6 +53,20 @@ def build_discharge_schema(max_power: int) -> vol.Schema:
     })
 
 
+def build_max_power_schema(max_power: int) -> vol.Schema:
+    return vol.Schema({
+        vol.Required("value"): vol.All(cv.positive_int, vol.Range(min=50, max=max_power)),
+        vol.Optional("device_id"): cv.string,
+    })
+
+
+def build_max_discharge_power_schema(max_power: int) -> vol.Schema:
+    return vol.Schema({
+        vol.Required("value"): vol.All(cv.positive_int, vol.Range(min=100, max=max_power)),
+        vol.Optional("device_id"): cv.string,
+    })
+
+
 SERVICE_DEVICE_SCHEMA = vol.Schema({
     vol.Optional("device_id"): cv.string,
 })
@@ -66,6 +82,22 @@ SERVICE_CLOUD_DISCHARGE_SCHEMA = vol.Schema({
     vol.Optional("device_id"): cv.string,
 })
 
+SERVICE_REGISTER_OFF_GRID_SCHEMA = vol.Schema({
+    vol.Required("value"): vol.All(cv.positive_int, vol.Range(min=0, max=1)),
+    vol.Optional("device_id"): cv.string,
+})
+
+SERVICE_REGISTER_LED_SCHEMA = vol.Schema({
+    vol.Required("value"): vol.All(cv.positive_int, vol.Range(min=0, max=1)),
+    vol.Optional("device_id"): cv.string,
+})
+
+SERVICE_SOC_SECURITY_SCHEMA = vol.Schema({
+    vol.Required("value"): vol.All(cv.positive_int, vol.Range(min=SOC_SECURITY_MIN, max=SOC_SECURITY_MAX)),
+    vol.Optional("device_id"): cv.string,
+})
+
+
 
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     return True
@@ -74,7 +106,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
 
     try:
-        titan_count = entry.data.get(CONF_TITAN_COUNT, 1)
+        titan_count = int(entry.data.get(CONF_TITAN_COUNT, 1))
         override = entry.data.get(CONF_OVERRIDE_RESPONSIBILITY, False)
 
         user_max_c = entry.options.get("max_charge_power")
@@ -131,7 +163,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await async_register_services(hass)
 
         _LOGGER.info(
-            "Izypower Titan setup complete — %s Titans (%s)",
+            "Izypower Titan setup complete – %s Titans (%s)",
             len(hosts),
             ", ".join(hosts),
         )
@@ -143,6 +175,85 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if entry.entry_id in hass.data.get(DOMAIN, {}):
             del hass.data[DOMAIN][entry.entry_id]
         raise ConfigEntryNotReady from err
+
+
+async def execute_on_cluster_coordinators(
+    hass: HomeAssistant,
+    coordinator: "IzypowerTitanCoordinator",
+    command_name: str,
+    value: Any,
+    rollback_value: Any | None = None,
+) -> None:
+
+    entry_id = coordinator.config_entry.entry_id
+    coordinators_dict = hass.data[DOMAIN].get(entry_id, {})
+
+    if not coordinators_dict:
+        raise HomeAssistantError(f"No coordinators found for entry {entry_id}")
+
+    coordinator_list = list(coordinators_dict.values())
+    _LOGGER.debug(
+        "Executing cluster command '%s' on %d coordinator(s)",
+        command_name,
+        len(coordinator_list)
+    )
+
+    successful_coordinators = []
+
+    try:
+        for coord in coordinator_list:
+            command_method = getattr(coord, command_name)
+            
+            _LOGGER.debug(
+                "Executing %s(%s) on coordinator %s",
+                command_name,
+                value,
+                coord.host
+            )
+            
+            await command_method(value)
+            successful_coordinators.append(coord)
+            
+        _LOGGER.info(
+            "Cluster command '%s' executed successfully on %d coordinator(s)",
+            command_name,
+            len(successful_coordinators)
+        )
+
+    except Exception as err:
+        _LOGGER.error(
+            "Cluster command '%s' failed on coordinator %s after %d successful execution(s). Error: %s",
+            command_name,
+            coord.host if coord else "unknown",
+            len(successful_coordinators),
+            err
+        )
+
+        if rollback_value is not None and successful_coordinators:
+            _LOGGER.warning(
+                "Attempting rollback to value %s on %d coordinator(s)",
+                rollback_value,
+                len(successful_coordinators)
+            )
+            
+            for rollback_coord in successful_coordinators:
+                try:
+                    rollback_method = getattr(rollback_coord, command_name)
+                    await rollback_method(rollback_value)
+                    _LOGGER.debug(
+                        "Rollback successful on coordinator %s",
+                        rollback_coord.host
+                    )
+                except Exception as rollback_err:
+                    _LOGGER.error(
+                        "Rollback failed on coordinator %s: %s",
+                        rollback_coord.host,
+                        rollback_err
+                    )
+
+        raise HomeAssistantError(
+            f"Cluster command '{command_name}' failed: {err}"
+        ) from err
 
 
 async def async_register_services(hass: HomeAssistant) -> None:
@@ -185,7 +296,7 @@ async def async_register_services(hass: HomeAssistant) -> None:
                     break
 
             if not device_identifier:
-                raise HomeAssistantError("Ce device n’est pas un Titan Izypower")
+                raise HomeAssistantError("Ce device n'est pas un Titan Izypower")
 
             for entry_id, coordinators in domain_data.items():
                 if device_identifier in coordinators:
@@ -205,7 +316,15 @@ async def async_register_services(hass: HomeAssistant) -> None:
 
     async def charge(call: ServiceCall):
         coordinator = await get_coordinator_from_call(call)
-        if not coordinator: return
+        if not coordinator:
+            return
+        
+        if not is_meter_connected(coordinator):
+            _LOGGER.warning(
+                "Service 'charge' ignoré : meter non connecté (sensor 7120 != 1000)"
+            )
+            return
+        
         power = call.data["power"]
         soc_limit = call.data.get("soc_limit", 100)
         max_p = coordinator.max_charge_power
@@ -214,7 +333,15 @@ async def async_register_services(hass: HomeAssistant) -> None:
 
     async def discharge(call: ServiceCall):
         coordinator = await get_coordinator_from_call(call)
-        if not coordinator: return
+        if not coordinator:
+            return
+        
+        if not is_meter_connected(coordinator):
+            _LOGGER.warning(
+                "Service 'discharge' ignoré : meter non connecté (sensor 7120 != 1000)"
+            )
+            return
+        
         power = call.data["power"]
         soc_limit = call.data.get("soc_limit", 5)
         max_p = coordinator.max_discharge_power
@@ -223,15 +350,31 @@ async def async_register_services(hass: HomeAssistant) -> None:
 
     async def stop(call: ServiceCall):
         coordinator = await get_coordinator_from_call(call)
-        if coordinator:
-            await coordinator.api.async_stop()
-            await coordinator.async_request_refresh()
+        if not coordinator:
+            return
+        
+        if not is_meter_connected(coordinator):
+            _LOGGER.warning(
+                "Service 'stop' ignoré : meter non connecté (sensor 7120 != 1000)"
+            )
+            return
+        
+        await coordinator.api.async_stop()
+        await coordinator.async_request_refresh()
 
     async def set_realtime_mode(call: ServiceCall):
         coordinator = await get_coordinator_from_call(call)
-        if coordinator:
-            await coordinator.api.async_set_realtime_mode()
-            await coordinator.async_request_refresh()
+        if not coordinator:
+            return
+        
+        if not is_meter_connected(coordinator):
+            _LOGGER.warning(
+                "Service 'set_realtime_mode' ignoré : meter non connecté (sensor 7120 != 1000)"
+            )
+            return
+        
+        await coordinator.api.async_set_realtime_mode()
+        await coordinator.async_request_refresh()
 
     async def set_intelligent_mode(call: ServiceCall):
         coordinator = await get_coordinator_from_call(call)
@@ -241,9 +384,17 @@ async def async_register_services(hass: HomeAssistant) -> None:
 
     async def set_selfconsumed_mode(call: ServiceCall):
         coordinator = await get_coordinator_from_call(call)
-        if coordinator:
-            await coordinator.api.async_set_selfconsumed_mode()
-            await coordinator.async_request_refresh()
+        if not coordinator:
+            return
+        
+        if not is_meter_connected(coordinator):
+            _LOGGER.warning(
+                "Service 'set_selfconsumed_mode' ignoré : meter non connecté (sensor 7120 != 1000)"
+            )
+            return
+        
+        await coordinator.api.async_set_selfconsumed_mode()
+        await coordinator.async_request_refresh()
 
 
     async def cloud_charge_manual(call: ServiceCall):
@@ -291,6 +442,80 @@ async def async_register_services(hass: HomeAssistant) -> None:
             await coordinator.async_request_refresh()
 
     
+    async def set_register_off_grid(call: ServiceCall):
+        coordinator = await get_coordinator_from_call(call)
+        if not coordinator: return
+        value = call.data["value"]
+        await coordinator.api.async_set_register_off_grid(value)
+        await coordinator.async_request_refresh()
+
+    async def set_register_led(call: ServiceCall):
+        coordinator = await get_coordinator_from_call(call)
+        if not coordinator: return
+        value = call.data["value"]
+        await coordinator.api.async_set_register_led(value)
+        await coordinator.async_request_refresh()
+
+    async def set_soc_security(call: ServiceCall):
+        coordinator = await get_coordinator_from_call(call)
+        if not coordinator:
+            return
+            
+        value = call.data["value"]
+        
+        await execute_on_cluster_coordinators(
+            call.hass,
+            coordinator,
+            "async_set_soc_security_register",
+            value,
+        )
+        
+        entry_id = coordinator.config_entry.entry_id
+        coordinators = call.hass.data[DOMAIN].get(entry_id, {})
+        
+        for coord in coordinators.values():
+            await coord.async_request_refresh()
+
+    async def set_max_power(call: ServiceCall):
+        coordinator = await get_coordinator_from_call(call)
+        if not coordinator:
+            return
+            
+        value = call.data["value"]
+        
+        await execute_on_cluster_coordinators(
+            call.hass,
+            coordinator,
+            "async_set_max_power_register",
+            value,
+        )
+        
+        entry_id = coordinator.config_entry.entry_id
+        coordinators = call.hass.data[DOMAIN].get(entry_id, {})
+        
+        for coord in coordinators.values():
+            await coord.async_request_refresh()
+
+    async def set_max_discharge_power(call: ServiceCall):
+        coordinator = await get_coordinator_from_call(call)
+        if not coordinator:
+            return
+            
+        value = call.data["value"]
+        
+        await execute_on_cluster_coordinators(
+            call.hass,
+            coordinator,
+            "async_set_max_discharge_power_register",
+            value,
+        )
+        
+        entry_id = coordinator.config_entry.entry_id
+        coordinators = call.hass.data[DOMAIN].get(entry_id, {})
+        
+        for coord in coordinators.values():
+            await coord.async_request_refresh()
+
     entries = hass.data[DOMAIN].values()
     first_entry = next(iter(entries), None)
 
@@ -302,9 +527,22 @@ async def async_register_services(hass: HomeAssistant) -> None:
 
     charge_limit = getattr(first_coordinator, "max_charge_power", DEFAULT_MAX_CHARGE_POWER) if first_coordinator else DEFAULT_MAX_CHARGE_POWER
     discharge_limit = getattr(first_coordinator, "max_discharge_power", DEFAULT_MAX_DISCHARGE_POWER) if first_coordinator else DEFAULT_MAX_DISCHARGE_POWER
+    max_power_limit = charge_limit
+    
+    # Calculate max_discharge_power_limit based on override setting
+    if first_coordinator:
+        override = first_coordinator.config_entry.data.get(CONF_OVERRIDE_RESPONSIBILITY, False)
+        if override:
+            max_discharge_power_limit = MAX_ABS_PER_TITAN  # 2400W
+        else:
+            max_discharge_power_limit = DISCHARGE_PER_TITAN  # 800W
+    else:
+        max_discharge_power_limit = DISCHARGE_PER_TITAN  # Default 800W
 
     charge_schema = build_charge_schema(charge_limit)
     discharge_schema = build_discharge_schema(discharge_limit)
+    max_power_schema = build_max_power_schema(max_power_limit)
+    max_discharge_power_schema = build_max_discharge_power_schema(max_discharge_power_limit)
 
     hass.services.async_register(DOMAIN, "charge", charge, schema=charge_schema)
     hass.services.async_register(DOMAIN, "discharge", discharge, schema=discharge_schema)
@@ -317,6 +555,12 @@ async def async_register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(DOMAIN, "set_cloud_max_discharge", set_cloud_max_discharge, schema=SERVICE_CLOUD_DISCHARGE_SCHEMA)
     hass.services.async_register(DOMAIN, "set_cloud_intelligent_mode", set_cloud_intelligent_mode, schema=SERVICE_DEVICE_SCHEMA)
     hass.services.async_register(DOMAIN, "set_cloud_standby_mode", set_cloud_standby_mode, schema=SERVICE_DEVICE_SCHEMA)
+    hass.services.async_register(DOMAIN, "set_register_off_grid", set_register_off_grid, schema=SERVICE_REGISTER_OFF_GRID_SCHEMA)
+    hass.services.async_register(DOMAIN, "set_register_led", set_register_led, schema=SERVICE_REGISTER_LED_SCHEMA)
+    hass.services.async_register(DOMAIN, "set_soc_security", set_soc_security, schema=SERVICE_SOC_SECURITY_SCHEMA)
+    hass.services.async_register(DOMAIN, "set_max_power", set_max_power, schema=max_power_schema)
+    hass.services.async_register(DOMAIN, "set_max_discharge_power", set_max_discharge_power, schema=max_discharge_power_schema)
+
 
     _LOGGER.info("Izypower Titan services registered successfully.")
 
@@ -364,7 +608,7 @@ async def async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None
             coordinator.max_discharge_power = titan_count * DISCHARGE_PER_TITAN
 
     _LOGGER.info(
-        "Izypower Titan options updated — scan_interval=%ss, charge=%sW, discharge=%sW",
+        "Izypower Titan options updated – scan_interval=%ss, charge=%sW, discharge=%sW",
         new_interval,
         coordinator.max_charge_power,
         coordinator.max_discharge_power,

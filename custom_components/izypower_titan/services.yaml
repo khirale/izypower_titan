@@ -82,6 +82,39 @@ stop:
   fields:
     device_id: *device_id_field
 
+set_max_power:
+  name: Discharge Battery power
+  description: Modifie la puissance de la charge en self-consumed mode
+  fields:
+    power:
+      name: Puissance
+      description: Puissance de décharge en Watts (commande non fonctionnel en dessous de 100W)
+      required: true
+      default: 800
+      selector:
+        number:
+          min: 100
+          max: 4800
+          unit_of_measurement: "W"
+    device_id: *device_id_field
+
+set_max_discharge_power:
+  name: Discharge Battery power
+  description: Modifie la puissance de la décharge en self-consumed mode
+  fields:
+    power:
+      name: Puissance
+      description: Puissance de décharge en Watts
+      required: true
+      default: 800
+      selector:
+        number:
+          min: 0
+          max: 2400
+          unit_of_measurement: "W"
+    device_id: *device_id_field
+
+
 # ---------------------------------------------------------
 # SERVICES CLOUD (via IzyPower API)
 # ---------------------------------------------------------
@@ -143,3 +176,67 @@ set_cloud_standby_mode:
   description: Passe l'appareil en mode Standby (Smart IA) via le Cloud.
   fields:
     device_id: *device_id_field
+
+set_register_off_grid:
+  name: Set OFF Grid
+  description: Configure le registre 7266 (0=OFF, 1=ON) - Commande unitaire par batterie
+  fields:
+    value:
+      name: Valeur
+      description: 0 pour OFF, 1 pour ON
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 1
+          mode: slider
+    device_id:
+      name: Device
+      description: L'appareil à contrôler (Master ou Slave spécifique).
+      required: false
+      selector:
+        device:
+          integration: izypower_titan
+
+set_register_led:
+  name: Set LEDs Control
+  description: Active ou désactive les LEDs du Titan (0=OFF, 1=ON)
+  fields:
+    value:
+      name: Valeur
+      description: 0 pour OFF, 1 pour ON
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 1
+          mode: slider
+    device_id:
+      name: Device
+      description: L'appareil à contrôler (Master ou Slave spécifique).
+      required: false
+      selector:
+        device:
+          integration: izypower_titan
+
+set_soc_security:
+  name: Set SOC Security (ESP)
+  description: Configure le SOC de sécurité (ESP) - Registre 1142. Commande exécutée sur tous les membres du cluster.
+  fields:
+    value:
+      name: SOC de sécurité
+      description: Pourcentage de SOC minimal (5-100%)
+      required: true
+      selector:
+        number:
+          min: 5
+          max: 100
+          step: 5
+          unit_of_measurement: "%"
+    device_id:
+      name: Device
+      description: L'appareil à contrôler (Master du cluster).
+      required: false
+      selector:
+        device:
+          integration: izypower_titan

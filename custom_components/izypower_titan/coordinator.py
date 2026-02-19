@@ -351,6 +351,27 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             is_cluster=self.is_cluster,
         )
 
+    async def async_set_soc_security_register(self, value: int):
+        """Wrapper method to call API with SOC security register."""
+        return await self.api.async_set_soc_security_register(value)
+
+    async def async_set_max_power_register(self, value: int):
+        """Wrapper method to call API with max_charge_power parameter."""
+        return await self.api.async_set_max_power_register(value, self.max_charge_power)
+
+    async def async_set_max_discharge_power_register(self, value: int):
+        """Wrapper method to call API with max_discharge_power parameter based on override setting."""
+        from .const import CONF_TITAN_COUNT, CONF_OVERRIDE_RESPONSIBILITY, DISCHARGE_PER_TITAN, MAX_ABS_PER_TITAN
+        
+        override = self.config_entry.data.get(CONF_OVERRIDE_RESPONSIBILITY, False)
+        
+        if override:
+            max_power = MAX_ABS_PER_TITAN  # 2400W
+        else:
+            max_power = DISCHARGE_PER_TITAN  # 800W
+        
+        return await self.api.async_set_max_discharge_power_register(value, max_power)
+
     async def _discover_links(self) -> None:
         for group in LINK_ID_GROUPS:
             sn_id = group[0]

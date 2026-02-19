@@ -59,7 +59,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
                         state_mapping=meta.get("state_mapping", {}),
                         entity_category=(
                             EntityCategory.DIAGNOSTIC
-                            if meta.get("key") == "alarm_code"
+                            if meta.get("key") in ("alarm_code", "backup", "leds")
                             else None
                         ),
                     ),

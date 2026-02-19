@@ -5,7 +5,8 @@ import logging
 from homeassistant.components.button import ButtonEntity
 from homeassistant.helpers import entity_registry as er
 from homeassistant.exceptions import HomeAssistantError
-from .const import DOMAIN, CONF_CONNECTION_MODE, CONNECTION_MODE_LABELS, CONTROL,CLUSTER_ROLE, CLUSTER_SLAVE
+from .const import DOMAIN, CONF_CONNECTION_MODE, CONNECTION_MODE_LABELS, CONTROL, ENTITY_SCOPE_CLUSTER, ENTITY_SCOPE_UNIT
+from .utils import is_meter_connected
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,9 +23,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
     entities = []
 
     for coordinator in coordinators.values():
-        if coordinator.host != master_ip:
-            continue
-
         candidates = [
             IzypowerTitanRealtimeButton(coordinator),
             IzypowerTitanChargeButton(coordinator),
@@ -37,6 +35,10 @@ async def async_setup_entry(hass, entry, async_add_entities):
         ]
 
         for entity in candidates:
+            if hasattr(entity, 'scope') and entity.scope == ENTITY_SCOPE_CLUSTER:
+                if coordinator.host != master_ip:
+                    continue
+                    
             if CONTROL != "selected":
                 entities.append(entity)
                 continue
@@ -52,6 +54,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class IzypowerTitanBaseButton(ButtonEntity):
     _attr_has_entity_name = True
     profile: str = "common"
+    scope: str = ENTITY_SCOPE_CLUSTER
     
     def __init__(self, coordinator, unique_suffix: str, name: str):
         self.coordinator = coordinator
@@ -66,33 +69,59 @@ class IzypowerTitanBaseButton(ButtonEntity):
 
 class IzypowerTitanRealtimeButton(IzypowerTitanBaseButton):
     profile = "MR1"
+    scope = ENTITY_SCOPE_CLUSTER
+    
     def __init__(self, coordinator):
         super().__init__(coordinator, "realtime", "Realtime mode")
 
     async def async_press(self) -> None:
+        if not is_meter_connected(self.coordinator):
+            raise HomeAssistantError(
+                "Mauvaise configuration de l'intégration - Veuillez utiliser le bon choix de meter"
+            )
+        
         _LOGGER.info("Setting Titan to Realtime mode")
         await self.coordinator.api.async_set_realtime_mode()
 
+
 class IzypowerTitanStopButton(IzypowerTitanBaseButton):
     profile = "MR1"
+    scope = ENTITY_SCOPE_CLUSTER
+    
     def __init__(self, coordinator):
         super().__init__(coordinator, "stop", "Standby")
 
     async def async_press(self) -> None:
+        if not is_meter_connected(self.coordinator):
+            raise HomeAssistantError(
+                "Mauvaise configuration de l'intégration - Veuillez utiliser le bon choix de meter"
+            )
+        
         _LOGGER.info("Setting Titan to Stop mode")
         await self.coordinator.api.async_stop()
 
+
 class IzypowerSelfConsumedModeButton(IzypowerTitanBaseButton):
     profile = "MR1"
+    scope = ENTITY_SCOPE_CLUSTER
+    
     def __init__(self, coordinator):
         super().__init__(coordinator, "self-consumed mode", "Self-Consumed mode")
 
     async def async_press(self) -> None:
+        if not is_meter_connected(self.coordinator):
+            raise HomeAssistantError(
+                "Mauvaise configuration de l'intégration - Veuillez utiliser le bon choix de meter"
+            )
+        
         _LOGGER.info("Setting Titan to Self-consumed mode")
         await self.coordinator.api.async_set_selfconsumed_mode()
 
+
 class IzypowerTitanChargeButton(IzypowerTitanBaseButton):
     profile = "MR1"
+    scope = ENTITY_SCOPE_CLUSTER
+    
     def __init__(self, coordinator):
         super().__init__(coordinator, "charge", "Start Charge")
 
@@ -104,6 +133,11 @@ class IzypowerTitanChargeButton(IzypowerTitanBaseButton):
         return entry
 
     async def async_press(self) -> None:
+        if not is_meter_connected(self.coordinator):
+            raise HomeAssistantError(
+                "Mauvaise configuration de l'intégration - Veuillez utiliser le bon choix de meter"
+            )
+        
         power_eid = self._get_number_entity_id("charge_discharge_power")
         soc_eid = self._get_number_entity_id("charge_soc_limit")
 
@@ -128,6 +162,8 @@ class IzypowerTitanChargeButton(IzypowerTitanBaseButton):
 
 class IzypowerTitanDischargeButton(IzypowerTitanBaseButton):
     profile = "MR1"
+    scope = ENTITY_SCOPE_CLUSTER
+    
     def __init__(self, coordinator):
         super().__init__(coordinator, "discharge", "Start Discharge")
 
@@ -138,6 +174,11 @@ class IzypowerTitanDischargeButton(IzypowerTitanBaseButton):
         return entry
 
     async def async_press(self) -> None:
+        if not is_meter_connected(self.coordinator):
+            raise HomeAssistantError(
+                "Mauvaise configuration de l'intégration - Veuillez utiliser le bon choix de meter"
+            )
+        
         ent_reg = er.async_get(self.hass)
         
         power_eid = self._get_number_entity_id("charge_discharge_power")
@@ -175,8 +216,11 @@ class IzypowerTitanDischargeButton(IzypowerTitanBaseButton):
 
         await self.coordinator.api.async_discharge(power=power, soc_limit=current_soc,  max_power=self.coordinator.max_discharge_power)
 
+
 class IzypowerTitanCloudChargeButton(IzypowerTitanBaseButton):
     profile = "Smart IA"
+    scope = ENTITY_SCOPE_CLUSTER
+    
     def __init__(self, coordinator):
         super().__init__(coordinator, "cloud_charge", "Start Charge")
 
@@ -211,8 +255,11 @@ class IzypowerTitanCloudChargeButton(IzypowerTitanBaseButton):
             power_watts=power
         )
 
+
 class IzypowerTitanCloudAutoButton(IzypowerTitanBaseButton):
     profile = "Smart IA"
+    scope = ENTITY_SCOPE_CLUSTER
+    
     def __init__(self, coordinator):
         super().__init__(coordinator, "cloud_auto", "Intelligent Mode")
 
@@ -224,8 +271,11 @@ class IzypowerTitanCloudAutoButton(IzypowerTitanBaseButton):
         _LOGGER.info("Cloud Intelligent Mode Press: SN=%s", device_sn)
         await self.coordinator.cloud_api.async_intelligent_mode(device_id=device_sn)
 
+
 class IzypowerTitanCloudStandbyModeButton(IzypowerTitanBaseButton):
     profile = "Smart IA"
+    scope = ENTITY_SCOPE_CLUSTER
+    
     def __init__(self, coordinator):
         super().__init__(coordinator, "standby mode", "Standby mode")
 
