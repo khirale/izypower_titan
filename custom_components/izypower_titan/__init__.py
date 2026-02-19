@@ -613,5 +613,4 @@ async def async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None
         coordinator.max_charge_power,
         coordinator.max_discharge_power,
         max_abs,
-
     )
