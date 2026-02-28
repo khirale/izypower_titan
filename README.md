@@ -55,7 +55,8 @@ L’intégration expose automatiquement :
 
 
 🎛️ **Pilotage de la batterie**
-<img width="1536" height="1024" alt="visuel" src="https://github.com/user-attachments/assets/c90f5054-91ab-4039-a0cf-3a017fe9a921" />
+
+![visuel](https://github.com/user-attachments/assets/c90f5054-91ab-4039-a0cf-3a017fe9a921)
 
 
 
@@ -69,18 +70,20 @@ Deux modes de pilotage sont disponibles selon le Smart Meter que vous utilisez :
 Listes de commandes disponibles par type de meter:
 | Commande                                     | Smart&nbsp;IA | MR1 | Paramètres                                                                                                                     |
 | -------------------------------------------- | :--------: | :---: | ------------------------------------------------------------------------------------------------------------------------------ |
-| **Charge**                                   | ✅        | ✅   | Demande à la batterie de se charger en fonction de la puissance de charge et **SOC limite de charge** (% de batterie à partir duquel la charge s’arrête automatiquement, ex. : 95 %) |
-| **Décharge**                                 | ❌        | ✅   | Demande à la batterie de se décharger en fonction de la puissance de décharge. La batterie s’arrête automatiquement lorsque le **SOC de sécurité** est atteint                         |
+| **Charge**                                   | ✅        | ✅   | Demande à la batterie de se charger en fonction de la puissance de charge et **SOC limite de charge** (pour MR1 uniquement,% de batterie à partir duquel la charge s’arrête automatiquement, ex. : 95 %) |
+| **Décharge**                                 | ✅        | ✅   | Demande à la batterie de se décharger en fonction de la puissance de décharge. La batterie s’arrête automatiquement lorsque le **SOC de sécurité** est atteint                         |
 | **Standby**                                  | ✅        | ✅   | Met la batterie en état de veille                                                                                              |
 | **Mode&nbsp;intelligent**                         | ✅        | ❌   | Bascule la batterie en mode *Intelligent*                                                                                      |
 | **Mode&nbsp;self-consumed**                       | ❌        | ✅   | Bascule la batterie en mode *Self-consumed* (autoconsommation)                                                                 |
 | **Mode&nbsp;Real-Time**                           | ❌        | ✅   | Permet à la batterie d’accepter les commandes locales — **obligatoire pour les utilisateurs MR1**                              |
 | **Mode&nbsp;manuel**                              | ✅        | ✅   | Bascule la batterie en mode manuel <br>*(pour Smart IA, ce mode est inclus dans les commandes Charge et Standby)*              |
 | **Puissance&nbsp;de&nbsp;charge<br>(mode manuel)**        | ✅        | ✅   | Modifie la puissance de charge en mode manuel                                                                                  |
-| **SOC&nbsp;de&nbsp;charge&nbsp;max<br>(mode manuel)**          | ✅        | ✅   | Modifie le SOC maximum de charge en mode manuel                                                                                |
+| **SOC&nbsp;de&nbsp;charge&nbsp;max<br>(mode manuel)**          | ❌        | ✅   | Modifie le SOC maximum de charge en mode manuel                                                                                |
 | **Puissance&nbsp;de&nbsp;décharge<br>(mode manuel)**      | ❌        | ✅   | Modifie la puissance de décharge en mode manuel                                                                                |
 | **Puissance&nbsp;de&nbsp;charge<br>(mode intelligent)**   | ✅        | ❌   | Modifie la puissance de charge en mode Intelligent                                                                             |
-| **Puissance&nbsp;de&nbsp;décharge<br>(mode intelligent)** | ✅        | ❌   | Modifie la puissance de décharge en mode Intelligent                                                                           |
+| **Puissance&nbsp;de&nbsp;décharge<br>(mode intelligent)** | ✅        | ❌   | Modifie la puissance de décharge en mode Intelligent |
+| **LED** | ✅        | ✅   | Permet d'activer ou de couper les leds |
+| **OFF-GRID** | ✅        | ✅   | Permet d'activer ou de couper la prise backup | 
 
 
 ## 🔧 Fonctionnement du pilotage
