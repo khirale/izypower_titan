@@ -407,6 +407,16 @@ async def async_register_services(hass: HomeAssistant) -> None:
             await coordinator.cloud_api.async_cloud_manual_charge(sn, power)
             await coordinator.async_request_refresh()
 
+    async def cloud_discharge_manual(call: ServiceCall):
+        coordinator = await get_coordinator_from_call(call)
+        if not coordinator: return
+        sn = coordinator.serial_number
+        power = call.data.get("power", 800)
+        if sn:
+            _LOGGER.info("Appel Décharge Cloud pour SN %s à %s W", sn, power)
+            await coordinator.cloud_api.async_cloud_manual_discharge(sn, power)
+            await coordinator.async_request_refresh()
+
     async def set_cloud_max_charge(call: ServiceCall):
         coordinator = await get_coordinator_from_call(call)
         if not coordinator: return
@@ -551,6 +561,7 @@ async def async_register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(DOMAIN, "set_intelligent_mode", set_intelligent_mode, schema=SERVICE_DEVICE_SCHEMA)
     hass.services.async_register(DOMAIN, "set_selfconsumed_mode", set_selfconsumed_mode, schema=SERVICE_DEVICE_SCHEMA)
     hass.services.async_register(DOMAIN, "cloud_charge_manual", cloud_charge_manual, schema=SERVICE_CLOUD_CHARGE_SCHEMA)
+    hass.services.async_register(DOMAIN, "cloud_discharge_manual", cloud_discharge_manual, schema=SERVICE_CLOUD_DISCHARGE_SCHEMA)
     hass.services.async_register(DOMAIN, "set_cloud_max_charge", set_cloud_max_charge, schema=SERVICE_CLOUD_CHARGE_SCHEMA)
     hass.services.async_register(DOMAIN, "set_cloud_max_discharge", set_cloud_max_discharge, schema=SERVICE_CLOUD_DISCHARGE_SCHEMA)
     hass.services.async_register(DOMAIN, "set_cloud_intelligent_mode", set_cloud_intelligent_mode, schema=SERVICE_DEVICE_SCHEMA)

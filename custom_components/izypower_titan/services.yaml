@@ -82,39 +82,6 @@ stop:
   fields:
     device_id: *device_id_field
 
-set_max_power:
-  name: Discharge Battery power
-  description: Modifie la puissance de la charge en self-consumed mode
-  fields:
-    power:
-      name: Puissance
-      description: Puissance de décharge en Watts (commande non fonctionnel en dessous de 100W)
-      required: true
-      default: 800
-      selector:
-        number:
-          min: 100
-          max: 4800
-          unit_of_measurement: "W"
-    device_id: *device_id_field
-
-set_max_discharge_power:
-  name: Discharge Battery power
-  description: Modifie la puissance de la décharge en self-consumed mode
-  fields:
-    power:
-      name: Puissance
-      description: Puissance de décharge en Watts
-      required: true
-      default: 800
-      selector:
-        number:
-          min: 0
-          max: 2400
-          unit_of_measurement: "W"
-    device_id: *device_id_field
-
-
 # ---------------------------------------------------------
 # SERVICES CLOUD (via IzyPower API)
 # ---------------------------------------------------------
@@ -126,6 +93,22 @@ cloud_charge_manual:
     power:
       name: Puissance
       description: Puissance de charge souhaitée.
+      required: true
+      default: 800
+      selector:
+        number:
+          min: 0
+          max: 4800
+          unit_of_measurement: "W"
+    device_id: *device_id_field
+
+cloud_discharge_manual:
+  name: Cloud Start Discharge
+  description: Lance une décharge manuelle via l'API Cloud (Smart IA).
+  fields:
+    power:
+      name: Puissance
+      description: Puissance de décharge souhaitée.
       required: true
       default: 800
       selector:
@@ -177,8 +160,8 @@ set_cloud_standby_mode:
   fields:
     device_id: *device_id_field
 
-set_register_off_grid:
-  name: Set OFF Grid
+set_register_7266:
+  name: Set Register 7266
   description: Configure le registre 7266 (0=OFF, 1=ON) - Commande unitaire par batterie
   fields:
     value:

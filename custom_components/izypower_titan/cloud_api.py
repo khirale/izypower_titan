@@ -116,6 +116,17 @@ class IzyCloudAPI:
         async with self.session.post(url_val, json=payload_power, headers=headers, timeout=self.timeout) as resp:
             return await resp.json()
 
+    async def async_cloud_manual_discharge(self, device_id: str, power_watts: int) -> Dict[str, Any]:
+        headers = await self.async_get_headers()
+
+        url_mode = f"{self.battery_url}/mode/{device_id}"
+        await self.session.post(url_mode, json={"ctr_mode": 1}, headers=headers, timeout=self.timeout)
+
+        url_val = f"{self.battery_url}/manual_mode_value/{device_id}"
+        payload_power = {"mode": 2, "power": power_watts}
+        async with self.session.post(url_val, json=payload_power, headers=headers, timeout=self.timeout) as resp:
+            return await resp.json()
+
     async def async_intelligent_mode(self, device_id: str) -> Dict[str, Any]:
         url = f"{self.battery_url}/mode/{device_id}"
         headers = await self.async_get_headers()

@@ -122,7 +122,7 @@ class IzypowerChargePowerNumber(IzypowerBaseNumber):
 
 
 class IzypowerChargeSocLimitNumber(IzypowerBaseNumber):
-    profile = "common"
+    profile = "MR1"
     scope = ENTITY_SCOPE_CLUSTER
 
     _attr_native_min_value = 0
@@ -355,7 +355,7 @@ class IzypowerMaxPowerNumber(CoordinatorEntity, NumberEntity, RestoreEntity):
 
     _attr_has_entity_name = True
     _attr_mode = NumberMode.SLIDER
-    _attr_native_min_value = 100
+    _attr_native_min_value = 50
     _attr_native_step = 50
     _attr_native_unit_of_measurement = "W"
     _attr_should_poll = False
@@ -432,7 +432,7 @@ class IzypowerMaxDischargePowerNumber(CoordinatorEntity, NumberEntity, RestoreEn
 
     _attr_has_entity_name = True
     _attr_mode = NumberMode.SLIDER
-    _attr_native_min_value = 0
+    _attr_native_min_value = 100
     _attr_native_step = 50
     _attr_native_unit_of_measurement = "W"
     _attr_should_poll = False
@@ -447,16 +447,14 @@ class IzypowerMaxDischargePowerNumber(CoordinatorEntity, NumberEntity, RestoreEn
         self._attr_name = "Max Discharge Power"
         self._attr_device_info = coordinator.device_info
 
-        from .const import MAX_ABS_PER_TITAN
+        from .const import CONF_TITAN_COUNT, CONF_OVERRIDE_RESPONSIBILITY, DISCHARGE_PER_TITAN, MAX_ABS_PER_TITAN
         
-        configured_value = float(
-            entry.options.get(
-                "max_discharge_power",
-                coordinator.max_discharge_power,
-            )
-        )
+        override = entry.data.get(CONF_OVERRIDE_RESPONSIBILITY, False)
         
-        self._attr_native_max_value = min(configured_value, float(MAX_ABS_PER_TITAN))
+        if override:
+            self._attr_native_max_value = float(MAX_ABS_PER_TITAN)  # 2400W
+        else:
+            self._attr_native_max_value = float(DISCHARGE_PER_TITAN)  # 800W
 
         self._value: float | None = None
 

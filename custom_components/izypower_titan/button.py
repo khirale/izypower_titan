@@ -30,6 +30,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             IzypowerTitanDischargeButton(coordinator),
             IzypowerTitanStopButton(coordinator),
             IzypowerTitanCloudChargeButton(coordinator),
+            IzypowerTitanCloudDischargeButton(coordinator),
             IzypowerTitanCloudAutoButton(coordinator),
             IzypowerTitanCloudStandbyModeButton(coordinator),
         ]
@@ -252,6 +253,45 @@ class IzypowerTitanCloudChargeButton(IzypowerTitanBaseButton):
         
         await self.coordinator.cloud_api.async_cloud_manual_charge(
             device_id=device_sn, 
+            power_watts=power
+        )
+
+
+class IzypowerTitanCloudDischargeButton(IzypowerTitanBaseButton):
+    profile = "Smart IA"
+    scope = ENTITY_SCOPE_CLUSTER
+
+    def __init__(self, coordinator):
+        super().__init__(coordinator, "cloud_discharge", "Start Discharge")
+
+    def _get_number_entity_id(self, suffix: str) -> str | None:
+        ent_reg = er.async_get(self.hass)
+        unique_id = f"{DOMAIN}_{self._host}_{suffix}"
+        return ent_reg.async_get_entity_id("number", DOMAIN, unique_id)
+
+    async def async_press(self) -> None:
+        device_sn = self.coordinator.serial_number
+
+        power_eid = self._get_number_entity_id("charge_discharge_power")
+        if not power_eid:
+            raise HomeAssistantError("Entité 'charge_discharge_power' introuvable.")
+
+        state = self.hass.states.get(power_eid)
+        if not state or state.state in ("unknown", "unavailable"):
+            raise HomeAssistantError("La valeur de puissance SmartIA est indisponible.")
+
+        try:
+            power = int(float(state.state))
+        except (TypeError, ValueError):
+            raise HomeAssistantError(f"Valeur de puissance invalide : {state.state}")
+
+        if not device_sn:
+            raise HomeAssistantError("Serial Number (ID 0) manquant dans le coordinateur.")
+
+        _LOGGER.info("SmartIA Discharge Press: SN=%s, Power=%sW", device_sn, power)
+
+        await self.coordinator.cloud_api.async_cloud_manual_discharge(
+            device_id=device_sn,
             power_watts=power
         )
 

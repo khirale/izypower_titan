@@ -50,7 +50,7 @@ TITAN_IDS = [
     7101,                         # Working mode ✅
     1664, 1665, 1666, 1667,       # DC Input Power 1..4 ✅
     1501,                         # Total DC Output Power ✅
-    #2108,                         # Total AC Output Power ✅
+    2108,                         # Total AC Output Power ✅
     #1502,                         # Daily Production ✅
     2101,                         # AC Input Power
     2107,                         # Total AC Input Energy ✅ Valeur Cluster
@@ -163,8 +163,8 @@ ID_META = {
     1667:  {"key": "dc_input_power4", "name": "TITAN - DC Input Power 4", "unit": "W", "dev_class": "power", "state_class": "measurement"},
     
     # Puissance
-    1501:  {"key": "dc_output_power", "name": "TITAN - DC Output Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
-    #2108:  {"key": "total_ac_output_power", "name": "TITAN - AC Output Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
+    1501:  {"key": "total_dc_output_power", "name": "TITAN - Total DC Output Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
+    2108:  {"key": "total_ac_output_power", "name": "TITAN - Total AC Output Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
     2098:  {"key": "ac_output_power", "name": "TITAN - AC output Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
     2278:  {"key": "ac_input_output", "name": "TITAN - AC Input And Output", "unit": "W", "dev_class": "power", "state_class": "measurement"},
     

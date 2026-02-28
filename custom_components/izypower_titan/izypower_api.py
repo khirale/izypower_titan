@@ -125,7 +125,7 @@ class IzypowerAPI:
 
 
     async def async_set_max_power_register(self, value: int, max_power: int) -> dict[str, Any]:
-        if not 100 <= value <= max_power:
+        if not 50 <= value <= max_power:
             raise ValueError(
                 f"Max Power must be 50-{max_power}W, got {value}W"
             )
