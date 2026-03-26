@@ -79,6 +79,7 @@ TITAN_IDS = [
     8100,                         # Alarm code ✅
     680,                          # Backup ✅
     7171,                         # LEDs State
+    9003,                         # Battertie cycles number
 
 ]
 
@@ -182,6 +183,7 @@ ID_META = {
     6009:  {"key": "battery_titan_level", "name": "TITAN - Battery %", "unit": "%", "dev_class": "battery", "state_class": "measurement"},
     11009:  {"key": "charging_power", "name": "TITAN - Charging Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
     11011:  {"key": "discharging_power", "name": "TITAN - Discharging Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
+    9003: {"key": "battery_cycle", "name": "Titan - Battery Cycles", "unit": None, "dev_class": None, "state_class": None},
     
     # Energie batterie
     6105:  {"key": "emergency_power_supply", "name": "TITAN - Battery SOC", "unit": "%", "state_class": "measurement"},
@@ -208,40 +210,45 @@ ID_META = {
 
 
 LINK_ID_GROUPS = [
-    [9032, 9016, 9030],
-    [9051, 9035, 9049],
-    [9070, 9054, 9068],
-    [9165, 9149, 9163],
-    [9218, 9202, 9216],
+    [9032, 9016, 9030, 9019],
+    [9051, 9035, 9049, 9038],
+    [9070, 9054, 9068, 9057],
+    [9165, 9149, 9163,9152],
+    [9218, 9202, 9216,9205],
 ]
 
 
 LINK_ID_META = {
     9032: {"key": "link_batt_sn", "name": "LINK - SN", "unit": None, "dev_class": None, "state_class": None},
+    9019: {"key": "link_batt_cycle", "name": "LINK - Cycles", "unit": None, "dev_class": None, "state_class": None},
     9016: {"key": "link_batt_soc", "name": "LINK - SOC", "unit": "%", "dev_class": "battery", "state_class": "measurement"},
     #9020: {"key": "link_batt_voltage", "name": "LINK - Voltage", "unit": "V", "dev_class": "voltage", "state_class": "measurement"},
     #19173: {"key": "link_batt_current", "name": "LINK - Current", "unit": "A", "dev_class": "current", "state_class": "measurement"},
     9030: {"key": "link_batt_temperature", "name": "LINK - Temperature", "unit": "°C", "dev_class": "temperature", "state_class": "measurement"},
 
     9051: {"key": "link_batt_sn", "name": "LINK - SN", "unit": None, "dev_class": None, "state_class": None},
+    9038: {"key": "link_batt_cycle", "name": "LINK - Cycles", "unit": None, "dev_class": None, "state_class": None},
     9035: {"key": "link_batt_soc", "name": "LINK - SOC", "unit": "%", "dev_class": "battery", "state_class": "measurement"},
     #9039: {"key": "link_batt_voltage", "name": "LINK - Voltage", "unit": "V", "dev_class": "voltage", "state_class": "measurement"},
     #19174: {"key": "link_batt_current", "name": "LINK - Current", "unit": "A", "dev_class": "current", "state_class": "measurement"},
     9049: {"key": "link_batt_temperature", "name": "LINK - Temperature", "unit": "°C", "dev_class": "temperature", "state_class": "measurement"},
 
     9070: {"key": "link_batt_sn", "name": "LINK - SN", "unit": None, "dev_class": None, "state_class": None},
+    9057: {"key": "link_batt_cycle", "name": "LINK - Cycles", "unit": None, "dev_class": None, "state_class": None},
     9054: {"key": "link_batt_soc", "name": "LINK - SOC", "unit": "%", "dev_class": "battery", "state_class": "measurement"},
     #9058: {"key": "link_batt_voltage", "name": "LINK - Voltage", "unit": "V", "dev_class": "voltage", "state_class": "measurement"},
     #19175: {"key": "link_batt_current", "name": "LINK - Current", "unit": "A", "dev_class": "current", "state_class": "measurement"},
     9068: {"key": "link_batt_temperature", "name": "LINK - Temperature", "unit": "°C", "dev_class": "temperature", "state_class": "measurement"},
 
     9165: {"key": "link_batt_sn", "name": "LINK - SN", "unit": None, "dev_class": None, "state_class": None},
+    9152: {"key": "link_batt_cycle", "name": "LINK - Cycles", "unit": None, "dev_class": None, "state_class": None},
     9149: {"key": "link_batt_soc", "name": "LINK - SOC", "unit": "%", "dev_class": "battery", "state_class": "measurement"},
     #9153: {"key": "link_batt_voltage", "name": "LINK - Voltage", "unit": "V", "dev_class": "voltage", "state_class": "measurement"},
     #19176: {"key": "link_batt_current", "name": "LINK - Current", "unit": "A", "dev_class": "current", "state_class": "measurement"},
     9163: {"key": "link_batt_temperature", "name": "LINK - Temperature", "unit": "°C", "dev_class": "temperature", "state_class": "measurement"},
 
     9218: {"key": "link_batt_sn", "name": "LINK - SN", "unit": None, "dev_class": None, "state_class": None},
+    9205: {"key": "link_batt_cycle", "name": "LINK - Cycles", "unit": None, "dev_class": None, "state_class": None},
     9202: {"key": "link_batt_soc", "name": "LINK - SOC", "unit": "%", "dev_class": "battery", "state_class": "measurement"},
     #9206: {"key": "link_batt_voltage", "name": "LINK - Voltage", "unit": "V", "dev_class": "voltage", "state_class": "measurement"},
     #19177: {"key": "link_batt_current", "name": "LINK - Current", "unit": "A", "dev_class": "current", "state_class": "measurement"},

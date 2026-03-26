@@ -315,7 +315,29 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             for sid, val in raw_data.items():
                 if sid not in merged:
                     merged[sid] = val
-                    
+
+            try:
+                wifi_data = await self.api.async_get_wifi_config()
+                sta = wifi_data.get("sta", {})
+                rssi_raw = sta.get("rssi")
+                if rssi_raw is not None:
+                    merged["wifi_rssi_dbm"] = (float(rssi_raw) / 2) - 100
+                if sta.get("ssid") is not None:
+                    merged["wifi_ssid"] = str(sta.get("ssid"))
+                if sta.get("ip") is not None:
+                    merged["wifi_ip"] = str(sta.get("ip"))
+            except Exception as err:
+                _LOGGER.debug("WiFi.GetConfig failed: %s", err)
+
+            try:
+                cloud_list = await self.api.async_get_cloud_status()
+                for item in cloud_list:
+                    if item.get("cloud") == ":IGEN_MQTT":
+                        merged["mqtt_connected"] = "Connected" if item.get("connected") else "Disconnected"
+                        break
+            except Exception as err:
+                _LOGGER.debug("Cloud.GetStatus failed: %s", err)
+
             self._first_update = False
             return merged
 

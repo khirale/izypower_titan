@@ -5,14 +5,11 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import EntityCategory
-from homeassistant.core import callback
-from homeassistant.util import dt as dt_util
 from dataclasses import dataclass, field
 from typing import Any
 from homeassistant.const import (
     UnitOfEnergy,
     UnitOfPower,
-    PERCENTAGE,
 )
 import logging
 
@@ -59,7 +56,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
                         state_mapping=meta.get("state_mapping", {}),
                         entity_category=(
                             EntityCategory.DIAGNOSTIC
-                            if meta.get("key") in ("alarm_code", "backup", "leds")
+                            if meta.get("key") in ("alarm_code", "backup", "leds", "battery_cycle",)
                             else None
                         ),
                     ),
@@ -70,10 +67,10 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
         entities.extend(
             [
-                IzypowerOptionSensor(entry, coordinator, "max_charge_power", "Max Charge Power", "W"),
-                IzypowerOptionSensor(entry, coordinator, "max_discharge_power", "Max Discharge Power", "W"),
-                IzypowerConnectivitySensor(coordinator, "connectivity_status", "TITAN - Connectivity"),
-                IzypowerConnectivityUptimeSensor(coordinator, "connectivity_uptime", "TITAN - Connectivity Uptime"),
+                IzypowerWifiRssiSensor(coordinator, "wifi_rssi", "TITAN - WiFi RSSI"),
+                IzypowerMqttStatusSensor(coordinator, "mqtt_status", "TITAN - MQTT Server"),
+                IzypowerWifiSsidSensor(coordinator, "wifi_ssid", "TITAN - WiFi SSID"),
+                IzypowerWifiIpSensor(coordinator, "wifi_ip", "TITAN - WiFi IP"),
             ]
         )
 
@@ -164,93 +161,6 @@ class IzypowerSensorEntity(CoordinatorEntity, SensorEntity):
         return value
 
 
-class IzypowerOptionSensor(SensorEntity):
-    _attr_has_entity_name = True
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-
-    def __init__(self, entry, coordinator, option_key: str, name: str, unit: str):
-        self.entry = entry
-        self.coordinator = coordinator
-        self.option_key = option_key
-        host = coordinator.host
-
-        self._attr_unique_id = f"{DOMAIN}_{host}_titan_{option_key}"
-        self._attr_name = f"TITAN - {name}"
-        self._attr_native_unit_of_measurement = unit
-        self._attr_device_info = coordinator.device_info
-
-    @property
-    def native_value(self):
-        return self.entry.options.get(self.option_key)
-
-
-class IzypowerConnectivitySensor(CoordinatorEntity, SensorEntity):
-    _attr_has_entity_name = True
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-
-    def __init__(self, coordinator, key, name):
-        super().__init__(coordinator)
-        host = coordinator.host
-
-        self._attr_unique_id = f"{DOMAIN}_{host}_connectivity"
-        self._attr_name = name
-        self._attr_device_info = coordinator.device_info
-
-    @property
-    def native_value(self):
-        return "OK" if getattr(self.coordinator, "last_http_ok", False) else "KO"
-
-
-class IzypowerConnectivityUptimeSensor(CoordinatorEntity, SensorEntity):
-    _attr_has_entity_name = True
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_native_unit_of_measurement = PERCENTAGE
-
-    def __init__(self, coordinator, key, name):
-        super().__init__(coordinator)
-        host = coordinator.host
-
-        self._attr_unique_id = f"{DOMAIN}_{host}_connectivity_uptime"
-        self._attr_name = name
-        self._attr_device_info = coordinator.device_info
-
-        self._ok = 0
-        self._total = 0
-        self._day = None
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        today_str = dt_util.now().date().isoformat()
-
-        if self._day is None:
-            self._day = today_str
-
-        if self._day != today_str:
-            self._day = today_str
-            self._ok = 0
-            self._total = 0
-
-        self._total += 1
-        if getattr(self.coordinator, "last_http_ok", False):
-            self._ok += 1
-
-        super()._handle_coordinator_update()
-
-    @property
-    def native_value(self):
-        if self._total == 0:
-            return 100.0
-        return round((self._ok / self._total) * 100.0, 2)
-
-    @property
-    def extra_state_attributes(self):
-        return {
-            "ok": self._ok,
-            "total": self._total,
-            "day": self._day,
-        }
-
-
 class IzypowerCloudStatusSensor(CoordinatorEntity, SensorEntity):
     _attr_has_entity_name = True
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -271,3 +181,90 @@ class IzypowerCloudStatusSensor(CoordinatorEntity, SensorEntity):
     @property
     def icon(self) -> str:
         return "mdi:cloud-check" if self.native_value == "Connected" else "mdi:cloud-off-outline"
+
+
+class IzypowerWifiRssiSensor(CoordinatorEntity, SensorEntity):
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_native_unit_of_measurement = "dBm"
+    _attr_device_class = SensorDeviceClass.SIGNAL_STRENGTH
+    _attr_state_class = "measurement"
+
+    def __init__(self, coordinator, key, name):
+        super().__init__(coordinator)
+        host = coordinator.host
+
+        self._attr_unique_id = f"{DOMAIN}_{host}_wifi_rssi"
+        self._attr_name = name
+        self._attr_device_info = coordinator.device_info
+
+    @property
+    def native_value(self) -> float | None:
+        data = self.coordinator.data or {}
+        return data.get("wifi_rssi_dbm")
+
+
+class IzypowerMqttStatusSensor(CoordinatorEntity, SensorEntity):
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, key, name):
+        super().__init__(coordinator)
+        host = coordinator.host
+
+        self._attr_unique_id = f"{DOMAIN}_{host}_mqtt_status"
+        self._attr_name = name
+        self._attr_device_info = coordinator.device_info
+
+    @property
+    def native_value(self) -> str | None:
+        data = self.coordinator.data or {}
+        return data.get("mqtt_connected")
+
+    @property
+    def icon(self) -> str:
+        return "mdi:server-network" if self.native_value == "Connected" else "mdi:server-network-off"
+
+
+class IzypowerWifiSsidSensor(CoordinatorEntity, SensorEntity):
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, key, name):
+        super().__init__(coordinator)
+        host = coordinator.host
+
+        self._attr_unique_id = f"{DOMAIN}_{host}_wifi_ssid"
+        self._attr_name = name
+        self._attr_device_info = coordinator.device_info
+
+    @property
+    def native_value(self) -> str | None:
+        data = self.coordinator.data or {}
+        return data.get("wifi_ssid")
+
+    @property
+    def icon(self) -> str:
+        return "mdi:wifi"
+
+
+class IzypowerWifiIpSensor(CoordinatorEntity, SensorEntity):
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, key, name):
+        super().__init__(coordinator)
+        host = coordinator.host
+
+        self._attr_unique_id = f"{DOMAIN}_{host}_wifi_ip"
+        self._attr_name = name
+        self._attr_device_info = coordinator.device_info
+
+    @property
+    def native_value(self) -> str | None:
+        data = self.coordinator.data or {}
+        return data.get("wifi_ip")
+
+    @property
+    def icon(self) -> str:
+        return "mdi:ip-network"

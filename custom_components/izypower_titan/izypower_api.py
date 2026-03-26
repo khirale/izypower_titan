@@ -140,3 +140,29 @@ class IzypowerAPI:
             )
         
         return await self.set_data(f=16, t=1147, v=[value])
+
+
+    async def async_get_wifi_config(self) -> Dict[str, Any]:
+        url = f"{self.base_url}/WiFi.GetConfig"
+        try:
+            async with self.session.get(url, timeout=self.timeout) as response:
+                if response.status != 200:
+                    raise Exception(f"HTTP {response.status}")
+                return await response.json()
+        except asyncio.TimeoutError:
+            raise Exception("WiFi.GetConfig request timed out")
+        except aiohttp.ClientError as err:
+            raise Exception(f"WiFi.GetConfig network error: {err}")
+
+
+    async def async_get_cloud_status(self) -> list:
+        url = f"{self.base_url}/Cloud.GetStatus"
+        try:
+            async with self.session.get(url, timeout=self.timeout) as response:
+                if response.status != 200:
+                    raise Exception(f"HTTP {response.status}")
+                return await response.json()
+        except asyncio.TimeoutError:
+            raise Exception("Cloud.GetStatus request timed out")
+        except aiohttp.ClientError as err:
+            raise Exception(f"Cloud.GetStatus network error: {err}")
