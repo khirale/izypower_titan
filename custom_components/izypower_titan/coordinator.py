@@ -8,6 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from .const import (
     DOMAIN,
@@ -23,6 +24,9 @@ from .izypower_api import IzypowerAPI
 from .cloud_api import IzyCloudAPI
 
 _LOGGER = logging.getLogger(__name__)
+
+WIFI_CLOUD_INTERVAL = timedelta(seconds=60)
+WATCHDOG_TIMEOUT = timedelta(minutes=5)
 
 
 def _decimal_precision(val: float) -> int:
@@ -67,7 +71,7 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         self.max_discharge_power = int(max_discharge)
 
         self.links: dict[str, dict[str, Any]] = {}
-        self._links_discovered = False
+        self._links_last_discovery: datetime | None = None
         self._poll_ids: list[int] = list(TITAN_IDS)
 
         self._consecutive_errors = 0
@@ -75,6 +79,10 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         self._first_update = True
         self.serial_number: str | None = None
         self.last_http_ok = False
+
+        self._last_successful_poll: datetime | None = None
+        self._last_wifi_cloud_poll: datetime | None = None
+        self._cached_wifi_cloud_data: dict[str, Any] = {}
 
         self._category_a_ids: set[str] = set()
         self._category_d_ids: set[str] = set()
@@ -132,9 +140,10 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         self.last_http_ok = False
 
         try:
-            if not self._links_discovered:
+            if (self._links_last_discovery is None or
+                    now - self._links_last_discovery >= timedelta(hours=1)):
                 await self._discover_links()
-                self._links_discovered = True
+                self._links_last_discovery = now
 
             new_data: Dict[str, Any] = await self.api.fetch_data(self._poll_ids)
 
@@ -212,6 +221,19 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
                     continue
 
                 dt_h = max((now - last_ts).total_seconds(), 1) / 3600.0
+
+                # After a long offline period, accept the new value as baseline
+                # without delta check — the device was simply unreachable
+                if dt_h > 1.0:
+                    self._last_valid_energy[sid] = value
+                    self._last_energy_ts[sid] = now
+                    validated_data[sid] = value
+                    _LOGGER.debug(
+                        "A %s baseline reset after %.1fh absence: %s",
+                        sid, dt_h, value,
+                    )
+                    continue
+
                 p_max_w = max(self.max_charge_power, self.max_discharge_power)
                 energy_max_wh = p_max_w * dt_h * 2.5
 
@@ -316,34 +338,53 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
                 if sid not in merged:
                     merged[sid] = val
 
-            try:
-                wifi_data = await self.api.async_get_wifi_config()
-                sta = wifi_data.get("sta", {})
-                rssi_raw = sta.get("rssi")
-                if rssi_raw is not None:
-                    merged["wifi_rssi_dbm"] = (float(rssi_raw) / 2) - 100
-                if sta.get("ssid") is not None:
-                    merged["wifi_ssid"] = str(sta.get("ssid"))
-                if sta.get("ip") is not None:
-                    merged["wifi_ip"] = str(sta.get("ip"))
-            except Exception as err:
-                _LOGGER.debug("WiFi.GetConfig failed: %s", err)
+            if (self._last_wifi_cloud_poll is None
+                    or now - self._last_wifi_cloud_poll >= WIFI_CLOUD_INTERVAL):
+                try:
+                    wifi_data = await self.api.async_get_wifi_config()
+                    sta = wifi_data.get("sta", {})
+                    rssi_raw = sta.get("rssi")
+                    if rssi_raw is not None:
+                        self._cached_wifi_cloud_data["wifi_rssi_dbm"] = (float(rssi_raw) / 2) - 100
+                    if sta.get("ssid") is not None:
+                        self._cached_wifi_cloud_data["wifi_ssid"] = str(sta.get("ssid"))
+                    if sta.get("ip") is not None:
+                        self._cached_wifi_cloud_data["wifi_ip"] = str(sta.get("ip"))
+                except Exception as err:
+                    _LOGGER.debug("WiFi.GetConfig failed: %s", err)
 
-            try:
-                cloud_list = await self.api.async_get_cloud_status()
-                for item in cloud_list:
-                    if item.get("cloud") == ":IGEN_MQTT":
-                        merged["mqtt_connected"] = "Connected" if item.get("connected") else "Disconnected"
-                        break
-            except Exception as err:
-                _LOGGER.debug("Cloud.GetStatus failed: %s", err)
+                try:
+                    cloud_list = await self.api.async_get_cloud_status()
+                    for item in cloud_list:
+                        if item.get("cloud") == ":IGEN_MQTT":
+                            self._cached_wifi_cloud_data["mqtt_connected"] = (
+                                "Connected" if item.get("connected") else "Disconnected"
+                            )
+                            break
+                except Exception as err:
+                    _LOGGER.debug("Cloud.GetStatus failed: %s", err)
+
+                self._last_wifi_cloud_poll = now
+
+            merged.update(self._cached_wifi_cloud_data)
 
             self._first_update = False
+            self._last_successful_poll = now
             return merged
 
         except Exception as err:
             self.last_http_ok = False
             self._consecutive_errors += 1
+
+            if (self._last_successful_poll is not None
+                    and now - self._last_successful_poll > WATCHDOG_TIMEOUT):
+                _LOGGER.warning(
+                    "Watchdog: aucun poll réussi depuis %s, marquage indisponible",
+                    WATCHDOG_TIMEOUT,
+                )
+                raise UpdateFailed(
+                    f"Watchdog timeout exceeded ({WATCHDOG_TIMEOUT})"
+                )
 
             if self.data and self._consecutive_errors <= self._max_consecutive_errors:
                 return self.data
@@ -352,7 +393,7 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
 
     @property
     def is_cluster(self) -> bool:
-        raw = self.data.get("606")
+        raw = (self.data or {}).get("606")
         try:
             raw = int(float(raw))
         except (TypeError, ValueError):
@@ -395,14 +436,16 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         return await self.api.async_set_max_discharge_power_register(value, max_power)
 
     async def _discover_links(self) -> None:
+        sn_ids = [group[0] for group in LINK_ID_GROUPS]
+
+        try:
+            data = await self.api.fetch_data(sn_ids)
+        except Exception as err:
+            _LOGGER.debug("Link discovery fetch failed: %s", err)
+            return
+
         for group in LINK_ID_GROUPS:
             sn_id = group[0]
-
-            try:
-                data = await self.api.fetch_data([sn_id])
-            except Exception:
-                continue
-
             sn = data.get(str(sn_id))
             if not sn:
                 continue
@@ -420,6 +463,13 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             for sensor_id in group:
                 if sensor_id not in self._poll_ids:
                     self._poll_ids.append(sensor_id)
+
+            _LOGGER.info("Nouvelle batterie Link découverte : SN=%s", sn)
+            async_dispatcher_send(
+                self.hass,
+                f"{DOMAIN}_new_link_{self.host}",
+                {"sn": sn, "ids": group},
+            )
 
     @property
     def device_info(self) -> DeviceInfo:

@@ -1,12 +1,22 @@
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.const import PERCENTAGE
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from .const import DOMAIN, LINK_ID_META
 import logging
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _build_link_entities(coordinator, sn: str, ids: list) -> list:
+    entities = []
+    for sensor_id in ids:
+        meta = LINK_ID_META.get(sensor_id)
+        if not meta:
+            continue
+        entities.append(IzypowerLinkSensor(coordinator, sn, sensor_id, meta))
+    return entities
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -15,22 +25,24 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     for coordinator in coordinators.values():
         for link in coordinator.links.values():
-            sn = link["sn"]
-            ids = link["ids"]
+            entities.extend(_build_link_entities(coordinator, link["sn"], link["ids"]))
 
-            for sensor_id in ids:
-                meta = LINK_ID_META.get(sensor_id)
-                if not meta:
-                    continue
-
-                entities.append(
-                    IzypowerLinkSensor(
-                        coordinator=coordinator,
-                        link_sn=sn,
-                        sensor_id=sensor_id,
-                        meta=meta,
-                    )
+        def _on_new_link(link_data, coord=coordinator):
+            new_entities = _build_link_entities(coord, link_data["sn"], link_data["ids"])
+            if new_entities:
+                _LOGGER.info(
+                    "Ajout dynamique de %d entités pour la batterie Link SN=%s",
+                    len(new_entities), link_data["sn"],
                 )
+                async_add_entities(new_entities)
+
+        entry.async_on_unload(
+            async_dispatcher_connect(
+                hass,
+                f"{DOMAIN}_new_link_{coordinator.host}",
+                _on_new_link,
+            )
+        )
 
     async_add_entities(entities)
 

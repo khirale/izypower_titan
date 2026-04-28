@@ -19,7 +19,6 @@ from .const import (
     SOC_SECURITY_MAX,
     SOC_SECURITY_STEP,
 )
-from .utils import is_meter_connected
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -398,13 +397,8 @@ class IzypowerMaxPowerNumber(CoordinatorEntity, NumberEntity, RestoreEntity):
         self.async_write_ha_state()
 
     async def async_set_native_value(self, value: float) -> None:
-        if not is_meter_connected(self.coordinator):
-            raise HomeAssistantError(
-                "Mauvaise configuration de l'intégration - Veuillez utiliser le bon choix de meter"
-            )
-        
         from . import execute_on_cluster_coordinators
-        
+
         old_value = self._value
 
         self._value = value
@@ -477,13 +471,8 @@ class IzypowerMaxDischargePowerNumber(CoordinatorEntity, NumberEntity, RestoreEn
         self.async_write_ha_state()
 
     async def async_set_native_value(self, value: float) -> None:
-        if not is_meter_connected(self.coordinator):
-            raise HomeAssistantError(
-                "Mauvaise configuration de l'intégration - Veuillez utiliser le bon choix de meter"
-            )
-        
         from . import execute_on_cluster_coordinators
-        
+
         old_value = self._value
 
         self._value = value

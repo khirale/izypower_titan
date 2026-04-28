@@ -223,3 +223,46 @@ set_soc_security:
       selector:
         device:
           integration: izypower_titan
+
+cluster_rebalance:
+  name: Cluster Rebalance
+  description: >
+    Force tous les Titans du cluster à appliquer les mêmes valeurs (sans rollback).
+    Utile après une intervention manuelle sur l'app Izypower native ou après un échec partiel
+    de commande cluster, pour remettre tous les Titans en cohérence. Au moins un paramètre est requis.
+  fields:
+    soc_security:
+      name: SOC de sécurité
+      description: Pourcentage de SOC minimal à propager sur tous les Titans (5-100%).
+      required: false
+      selector:
+        number:
+          min: 5
+          max: 100
+          step: 5
+          unit_of_measurement: "%"
+    max_charge_power:
+      name: Limite charge max
+      description: Limite max de charge en Watts à propager.
+      required: false
+      selector:
+        number:
+          min: 50
+          max: 4800
+          unit_of_measurement: "W"
+    max_discharge_power:
+      name: Limite décharge max
+      description: Limite max de décharge en Watts à propager.
+      required: false
+      selector:
+        number:
+          min: 100
+          max: 4800
+          unit_of_measurement: "W"
+    device_id:
+      name: Device
+      description: Master du cluster (la commande s'applique ensuite à tous les membres).
+      required: false
+      selector:
+        device:
+          integration: izypower_titan

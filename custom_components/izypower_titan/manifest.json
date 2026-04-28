@@ -1,12 +1,12 @@
 {
   "domain": "izypower_titan",
   "name": "Izypower Titan",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "documentation": "https://github.com/khirale/izypower_titan",
   "issue_tracker": "https://github.com/khirale/izypower_titan",
   "codeowners": ["@khirale"],
   "requirements": [
-    "pyjwt==2.10.1"
+    "pyjwt>=2.10.1,<3"
   ],
   "dependencies": [],
   "config_flow": true,

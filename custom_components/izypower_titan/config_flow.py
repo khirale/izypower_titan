@@ -32,6 +32,15 @@ class IzypowerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def async_get_options_flow(config_entry: config_entries.ConfigEntry):
         return IzypowerOptionsFlowHandler(config_entry)
 
+    @property
+    def _is_reconfigure(self) -> bool:
+        return self.source == config_entries.SOURCE_RECONFIGURE
+
+    async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None):
+        entry = self._get_reconfigure_entry()
+        self._data = dict(entry.data)
+        return await self.async_step_user()
+
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
         errors = {}
 
@@ -39,12 +48,17 @@ class IzypowerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._data.update(user_input)
             return await self.async_step_hosts()
 
+        default_mode = self._data.get(CONF_CONNECTION_MODE, MODE_LOCAL)
+        default_count = str(self._data.get(CONF_TITAN_COUNT, "1"))
+        default_port = self._data.get(CONF_PORT, DEFAULT_PORT)
+        default_interval = self._data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+
         schema = vol.Schema(
             {
-                vol.Required(CONF_CONNECTION_MODE, default=MODE_LOCAL): vol.In({MODE_LOCAL: "MR1", MODE_CLOUD: "Smart IA"}),
-                vol.Required(CONF_TITAN_COUNT, default="1"): SelectSelector(SelectSelectorConfig(options=["1", "2", "3"],mode=SelectSelectorMode.DROPDOWN,)),
-                vol.Optional(CONF_PORT, default=DEFAULT_PORT): int,
-                vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
+                vol.Required(CONF_CONNECTION_MODE, default=default_mode): vol.In({MODE_LOCAL: "MR1", MODE_CLOUD: "Smart IA"}),
+                vol.Required(CONF_TITAN_COUNT, default=default_count): SelectSelector(SelectSelectorConfig(options=["1", "2", "3"],mode=SelectSelectorMode.DROPDOWN,)),
+                vol.Optional(CONF_PORT, default=default_port): int,
+                vol.Optional(CONF_SCAN_INTERVAL, default=default_interval): int,
             }
         )
 
@@ -106,14 +120,20 @@ class IzypowerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 return await self.async_step_responsibility()
 
+        current_cluster = self._data.get("cluster", {})
+        default_master = current_cluster.get("master", "")
+        current_slaves = current_cluster.get("slaves", [])
+
         schema_fields = {
-            vol.Required("ip_master"): str,
+            vol.Required("ip_master", default=default_master): str,
         }
 
         if count >= 2:
-            schema_fields[vol.Required("ip_slave_1")] = str
+            default_slave_1 = current_slaves[0] if len(current_slaves) >= 1 else ""
+            schema_fields[vol.Required("ip_slave_1", default=default_slave_1)] = str
         if count >= 3:
-            schema_fields[vol.Required("ip_slave_2")] = str
+            default_slave_2 = current_slaves[1] if len(current_slaves) >= 2 else ""
+            schema_fields[vol.Required("ip_slave_2", default=default_slave_2)] = str
 
         return self.async_show_form(
             step_id="hosts",
@@ -149,10 +169,12 @@ class IzypowerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._data.update(user_input)
                 return await self.async_step_responsibility()
 
+        default_username = self._data.get(CONF_USERNAME, "")
+
         return self.async_show_form(
             step_id="cloud",
             data_schema=vol.Schema({
-                vol.Required(CONF_USERNAME): str,
+                vol.Required(CONF_USERNAME, default=default_username): str,
                 vol.Required(CONF_PASSWORD): str,
             }),
             errors=errors,
@@ -167,11 +189,12 @@ class IzypowerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return await self.async_step_summary()
 
         count = int(self._data.get(CONF_TITAN_COUNT, 1))
-        
+        default_override = self._data.get(CONF_OVERRIDE_RESPONSIBILITY, False)
+
         return self.async_show_form(
             step_id="responsibility",
             data_schema=vol.Schema({
-                vol.Required(CONF_OVERRIDE_RESPONSIBILITY, default=False): bool,
+                vol.Required(CONF_OVERRIDE_RESPONSIBILITY, default=default_override): bool,
             }),
             description_placeholders={"count": count, "charge": CHARGE_PER_TITAN, "discharge": DISCHARGE_PER_TITAN},
         )
@@ -188,11 +211,14 @@ class IzypowerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._data.update(user_input)
                 return await self.async_step_summary()
 
+        default_charge = self._data.get(DEFAULT_MAX_CHARGE_POWER, count * CHARGE_PER_TITAN)
+        default_discharge = self._data.get(DEFAULT_MAX_DISCHARGE_POWER, count * DISCHARGE_PER_TITAN)
+
         return self.async_show_form(
             step_id="power_override",
             data_schema=vol.Schema({
-                vol.Required(DEFAULT_MAX_CHARGE_POWER, default=count * CHARGE_PER_TITAN): int,
-                vol.Required(DEFAULT_MAX_DISCHARGE_POWER, default=count * DISCHARGE_PER_TITAN): int,
+                vol.Required(DEFAULT_MAX_CHARGE_POWER, default=default_charge): int,
+                vol.Required(DEFAULT_MAX_DISCHARGE_POWER, default=default_discharge): int,
             }),
             errors=errors,
             description_placeholders={"max_abs": str(count * MAX_ABS_PER_TITAN)}
@@ -200,6 +226,8 @@ class IzypowerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     
     async def async_step_summary(self, user_input: dict[str, Any] | None = None):
         if user_input is not None:
+            if self._is_reconfigure:
+                return self._async_update_izypower_entry()
             return self._async_create_izypower_entry()
 
         count = int(self._data.get(CONF_TITAN_COUNT, 1))
@@ -249,8 +277,34 @@ class IzypowerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             options={
                 CONF_SCAN_INTERVAL: self._data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
                 DEFAULT_MAX_CHARGE_POWER: self._data.get(DEFAULT_MAX_CHARGE_POWER, count * CHARGE_PER_TITAN),
-                DEFAULT_MAX_DISCHARGE_POWER: self._data.get(DEFAULT_MAX_DISCHARGE_POWER, count * DISCHARGE_PER_TITAN),CLUSTER_ROLE: self._data.get(CLUSTER_ROLE),
+                DEFAULT_MAX_DISCHARGE_POWER: self._data.get(DEFAULT_MAX_DISCHARGE_POWER, count * DISCHARGE_PER_TITAN),
+                CLUSTER_ROLE: self._data.get(CLUSTER_ROLE),
             },
+        )
+
+    def _async_update_izypower_entry(self):
+        count = int(self._data[CONF_TITAN_COUNT])
+        entry = self._get_reconfigure_entry()
+
+        new_options = dict(entry.options)
+        new_options[CONF_SCAN_INTERVAL] = self._data.get(
+            CONF_SCAN_INTERVAL, entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+        )
+        new_options[DEFAULT_MAX_CHARGE_POWER] = self._data.get(
+            DEFAULT_MAX_CHARGE_POWER, count * CHARGE_PER_TITAN
+        )
+        new_options[DEFAULT_MAX_DISCHARGE_POWER] = self._data.get(
+            DEFAULT_MAX_DISCHARGE_POWER, count * DISCHARGE_PER_TITAN
+        )
+        new_options[CLUSTER_ROLE] = self._data.get(CLUSTER_ROLE)
+
+        title = f"Izypower Titan Cluster ({count})"
+
+        return self.async_update_reload_and_abort(
+            entry,
+            title=title,
+            data=self._data,
+            options=new_options,
         )
 
 class IzypowerOptionsFlowHandler(config_entries.OptionsFlow):

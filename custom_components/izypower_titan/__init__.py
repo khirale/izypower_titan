@@ -11,10 +11,6 @@ from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
-import re
-
-
-HOST_RE = re.compile(r"izypower_titan_(\d+_\d+_\d+_\d+)")
 
 from .const import (
     DOMAIN,
@@ -33,7 +29,6 @@ from .const import (
     SOC_SECURITY_MAX,
 )
 from .coordinator import IzypowerTitanCoordinator
-from .utils import is_meter_connected
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -94,6 +89,13 @@ SERVICE_REGISTER_LED_SCHEMA = vol.Schema({
 
 SERVICE_SOC_SECURITY_SCHEMA = vol.Schema({
     vol.Required("value"): vol.All(cv.positive_int, vol.Range(min=SOC_SECURITY_MIN, max=SOC_SECURITY_MAX)),
+    vol.Optional("device_id"): cv.string,
+})
+
+SERVICE_CLUSTER_REBALANCE_SCHEMA = vol.Schema({
+    vol.Optional("soc_security"): vol.All(cv.positive_int, vol.Range(min=SOC_SECURITY_MIN, max=SOC_SECURITY_MAX)),
+    vol.Optional("max_charge_power"): cv.positive_int,
+    vol.Optional("max_discharge_power"): cv.positive_int,
     vol.Optional("device_id"): cv.string,
 })
 
@@ -192,6 +194,14 @@ async def execute_on_cluster_coordinators(
         raise HomeAssistantError(f"No coordinators found for entry {entry_id}")
 
     coordinator_list = list(coordinators_dict.values())
+
+    unreachable = [c.host for c in coordinator_list if not c.last_update_success]
+    if unreachable:
+        raise HomeAssistantError(
+            f"Cluster command '{command_name}' annulé : "
+            f"Titan(s) injoignable(s) — {', '.join(unreachable)}"
+        )
+
     _LOGGER.debug(
         "Executing cluster command '%s' on %d coordinator(s)",
         command_name,
@@ -319,12 +329,6 @@ async def async_register_services(hass: HomeAssistant) -> None:
         if not coordinator:
             return
         
-        if not is_meter_connected(coordinator):
-            _LOGGER.warning(
-                "Service 'charge' ignoré : meter non connecté (sensor 7120 != 1000)"
-            )
-            return
-        
         power = call.data["power"]
         soc_limit = call.data.get("soc_limit", 100)
         max_p = coordinator.max_charge_power
@@ -334,12 +338,6 @@ async def async_register_services(hass: HomeAssistant) -> None:
     async def discharge(call: ServiceCall):
         coordinator = await get_coordinator_from_call(call)
         if not coordinator:
-            return
-        
-        if not is_meter_connected(coordinator):
-            _LOGGER.warning(
-                "Service 'discharge' ignoré : meter non connecté (sensor 7120 != 1000)"
-            )
             return
         
         power = call.data["power"]
@@ -353,24 +351,12 @@ async def async_register_services(hass: HomeAssistant) -> None:
         if not coordinator:
             return
         
-        if not is_meter_connected(coordinator):
-            _LOGGER.warning(
-                "Service 'stop' ignoré : meter non connecté (sensor 7120 != 1000)"
-            )
-            return
-        
         await coordinator.api.async_stop()
         await coordinator.async_request_refresh()
 
     async def set_realtime_mode(call: ServiceCall):
         coordinator = await get_coordinator_from_call(call)
         if not coordinator:
-            return
-        
-        if not is_meter_connected(coordinator):
-            _LOGGER.warning(
-                "Service 'set_realtime_mode' ignoré : meter non connecté (sensor 7120 != 1000)"
-            )
             return
         
         await coordinator.api.async_set_realtime_mode()
@@ -385,12 +371,6 @@ async def async_register_services(hass: HomeAssistant) -> None:
     async def set_selfconsumed_mode(call: ServiceCall):
         coordinator = await get_coordinator_from_call(call)
         if not coordinator:
-            return
-        
-        if not is_meter_connected(coordinator):
-            _LOGGER.warning(
-                "Service 'set_selfconsumed_mode' ignoré : meter non connecté (sensor 7120 != 1000)"
-            )
             return
         
         await coordinator.api.async_set_selfconsumed_mode()
@@ -470,14 +450,23 @@ async def async_register_services(hass: HomeAssistant) -> None:
         coordinator = await get_coordinator_from_call(call)
         if not coordinator:
             return
-            
+
         value = call.data["value"]
-        
+
+        rollback_value = None
+        try:
+            raw = coordinator.data.get("6105")
+            if raw is not None:
+                rollback_value = int(float(raw))
+        except Exception:
+            pass
+
         await execute_on_cluster_coordinators(
             call.hass,
             coordinator,
             "async_set_soc_security_register",
             value,
+            rollback_value=rollback_value,
         )
         
         entry_id = coordinator.config_entry.entry_id
@@ -490,14 +479,23 @@ async def async_register_services(hass: HomeAssistant) -> None:
         coordinator = await get_coordinator_from_call(call)
         if not coordinator:
             return
-            
+
         value = call.data["value"]
-        
+
+        rollback_value = None
+        try:
+            raw = coordinator.data.get("11009")
+            if raw is not None:
+                rollback_value = int(float(raw))
+        except Exception:
+            pass
+
         await execute_on_cluster_coordinators(
             call.hass,
             coordinator,
             "async_set_max_power_register",
             value,
+            rollback_value=rollback_value,
         )
         
         entry_id = coordinator.config_entry.entry_id
@@ -510,21 +508,85 @@ async def async_register_services(hass: HomeAssistant) -> None:
         coordinator = await get_coordinator_from_call(call)
         if not coordinator:
             return
-            
+
         value = call.data["value"]
-        
+
+        rollback_value = None
+        try:
+            raw = coordinator.data.get("11011")
+            if raw is not None:
+                rollback_value = int(float(raw))
+        except Exception:
+            pass
+
         await execute_on_cluster_coordinators(
             call.hass,
             coordinator,
             "async_set_max_discharge_power_register",
             value,
+            rollback_value=rollback_value,
         )
-        
+
         entry_id = coordinator.config_entry.entry_id
         coordinators = call.hass.data[DOMAIN].get(entry_id, {})
-        
+
         for coord in coordinators.values():
             await coord.async_request_refresh()
+
+    async def cluster_rebalance(call: ServiceCall):
+        coordinator = await get_coordinator_from_call(call)
+        if not coordinator:
+            return
+
+        soc = call.data.get("soc_security")
+        max_c = call.data.get("max_charge_power")
+        max_d = call.data.get("max_discharge_power")
+
+        if soc is None and max_c is None and max_d is None:
+            raise HomeAssistantError(
+                "Au moins un paramètre requis : soc_security, max_charge_power ou max_discharge_power"
+            )
+
+        entry_id = coordinator.config_entry.entry_id
+        coordinators = call.hass.data[DOMAIN].get(entry_id, {})
+
+        errors: list[str] = []
+
+        for coord in coordinators.values():
+            if soc is not None:
+                try:
+                    await coord.async_set_soc_security_register(soc)
+                except Exception as err:
+                    errors.append(f"{coord.host}/soc_security={soc}: {err}")
+
+            if max_c is not None:
+                try:
+                    await coord.async_set_max_power_register(max_c)
+                except Exception as err:
+                    errors.append(f"{coord.host}/max_charge_power={max_c}: {err}")
+
+            if max_d is not None:
+                try:
+                    await coord.async_set_max_discharge_power_register(max_d)
+                except Exception as err:
+                    errors.append(f"{coord.host}/max_discharge_power={max_d}: {err}")
+
+        for coord in coordinators.values():
+            await coord.async_request_refresh()
+
+        if errors:
+            _LOGGER.warning(
+                "Cluster rebalance terminé avec %d erreur(s) : %s",
+                len(errors), errors,
+            )
+            raise HomeAssistantError(
+                f"Rebalance partiellement échoué ({len(errors)} erreur(s)) — voir logs"
+            )
+
+        _LOGGER.info(
+            "Cluster rebalance OK sur %d Titan(s) (soc=%s, max_c=%s, max_d=%s)",
+            len(coordinators), soc, max_c, max_d,
+        )
 
     entries = hass.data[DOMAIN].values()
     first_entry = next(iter(entries), None)
@@ -571,6 +633,7 @@ async def async_register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(DOMAIN, "set_soc_security", set_soc_security, schema=SERVICE_SOC_SECURITY_SCHEMA)
     hass.services.async_register(DOMAIN, "set_max_power", set_max_power, schema=max_power_schema)
     hass.services.async_register(DOMAIN, "set_max_discharge_power", set_max_discharge_power, schema=max_discharge_power_schema)
+    hass.services.async_register(DOMAIN, "cluster_rebalance", cluster_rebalance, schema=SERVICE_CLUSTER_REBALANCE_SCHEMA)
 
 
     _LOGGER.info("Izypower Titan services registered successfully.")
@@ -619,7 +682,7 @@ async def async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None
             coordinator.max_discharge_power = titan_count * DISCHARGE_PER_TITAN
 
     _LOGGER.info(
-        "Izypower Titan options updated – scan_interval=%ss, charge=%sW, discharge=%sW",
+        "Izypower Titan options updated – scan_interval=%ss, charge=%sW, discharge=%sW, max_abs=%sW",
         new_interval,
         coordinator.max_charge_power,
         coordinator.max_discharge_power,

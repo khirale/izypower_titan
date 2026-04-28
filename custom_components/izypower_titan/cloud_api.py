@@ -5,7 +5,6 @@ import logging
 import time
 import jwt
 from typing import Dict, Any
-from .const import CONF_TITAN_COUNT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,14 +62,17 @@ class IzyCloudAPI:
             self.token = None
             return None
 
+    def __repr__(self) -> str:
+        return f"IzyCloudAPI(username={self.username!r}, password=***)"
+
     def is_token_valid(self) -> bool:
         if not self.token:
             return False
         try:
             decoded = jwt.decode(self.token, options={"verify_signature": False})
-            return decoded.get("exp", 0) > (time.time() + 60)
+            return decoded.get("exp", 0) > (time.time() - 60)
         except Exception:
-              return True 
+            return False
 
     async def async_get_headers(self) -> Dict[str, str]:
         if not self.is_token_valid():
@@ -133,9 +135,3 @@ class IzyCloudAPI:
         async with self.session.post(url, json={"ctr_mode": 0}, headers=headers, timeout=self.timeout) as resp:
             return await resp.json()
 
-    async def async_set_soc(self, device_id: str, soc_value: int) -> Dict[str, Any]:
-        url = f"{self.battery_url}/min_soc/{device_id}"
-        payload = {"value": int(soc_value)}
-        headers = await self.async_get_headers()
-        async with self.session.post(url, json=payload, headers=headers, timeout=self.timeout) as resp:
-            return await resp.json()

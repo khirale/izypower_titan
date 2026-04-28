@@ -6,7 +6,6 @@ from homeassistant.components.button import ButtonEntity
 from homeassistant.helpers import entity_registry as er
 from homeassistant.exceptions import HomeAssistantError
 from .const import DOMAIN, CONF_CONNECTION_MODE, CONNECTION_MODE_LABELS, CONTROL, ENTITY_SCOPE_CLUSTER, ENTITY_SCOPE_UNIT
-from .utils import is_meter_connected
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -76,11 +75,6 @@ class IzypowerTitanRealtimeButton(IzypowerTitanBaseButton):
         super().__init__(coordinator, "realtime", "Realtime mode")
 
     async def async_press(self) -> None:
-        if not is_meter_connected(self.coordinator):
-            raise HomeAssistantError(
-                "Mauvaise configuration de l'intégration - Veuillez utiliser le bon choix de meter"
-            )
-        
         _LOGGER.info("Setting Titan to Realtime mode")
         await self.coordinator.api.async_set_realtime_mode()
 
@@ -93,11 +87,6 @@ class IzypowerTitanStopButton(IzypowerTitanBaseButton):
         super().__init__(coordinator, "stop", "Standby")
 
     async def async_press(self) -> None:
-        if not is_meter_connected(self.coordinator):
-            raise HomeAssistantError(
-                "Mauvaise configuration de l'intégration - Veuillez utiliser le bon choix de meter"
-            )
-        
         _LOGGER.info("Setting Titan to Stop mode")
         await self.coordinator.api.async_stop()
 
@@ -110,11 +99,6 @@ class IzypowerSelfConsumedModeButton(IzypowerTitanBaseButton):
         super().__init__(coordinator, "self-consumed mode", "Self-Consumed mode")
 
     async def async_press(self) -> None:
-        if not is_meter_connected(self.coordinator):
-            raise HomeAssistantError(
-                "Mauvaise configuration de l'intégration - Veuillez utiliser le bon choix de meter"
-            )
-        
         _LOGGER.info("Setting Titan to Self-consumed mode")
         await self.coordinator.api.async_set_selfconsumed_mode()
 
@@ -134,11 +118,6 @@ class IzypowerTitanChargeButton(IzypowerTitanBaseButton):
         return entry
 
     async def async_press(self) -> None:
-        if not is_meter_connected(self.coordinator):
-            raise HomeAssistantError(
-                "Mauvaise configuration de l'intégration - Veuillez utiliser le bon choix de meter"
-            )
-        
         power_eid = self._get_number_entity_id("charge_discharge_power")
         soc_eid = self._get_number_entity_id("charge_soc_limit")
 
@@ -175,11 +154,6 @@ class IzypowerTitanDischargeButton(IzypowerTitanBaseButton):
         return entry
 
     async def async_press(self) -> None:
-        if not is_meter_connected(self.coordinator):
-            raise HomeAssistantError(
-                "Mauvaise configuration de l'intégration - Veuillez utiliser le bon choix de meter"
-            )
-        
         ent_reg = er.async_get(self.hass)
         
         power_eid = self._get_number_entity_id("charge_discharge_power")

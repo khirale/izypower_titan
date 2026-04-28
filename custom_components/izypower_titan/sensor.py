@@ -137,6 +137,9 @@ class IzypowerSensorEntity(CoordinatorEntity, SensorEntity):
         if raw_value is None:
             return None
 
+        if self.entity_description.key == "0":
+            return str(raw_value)
+
         try:
             value = float(raw_value) * self.entity_description.coefficient
             if self.entity_description.device_class == SensorDeviceClass.ENERGY:
