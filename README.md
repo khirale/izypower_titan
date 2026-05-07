@@ -63,16 +63,6 @@ Supporte le pilotage local (MR1) et cloud (Smart IA), les clusters multi-Titans,
 4. Redémarrer Home Assistant
 5. **Paramètres → Appareils et services → Ajouter une intégration** → rechercher *Izypower Titan*
 
-#### Mise à jour depuis une version antérieure
-
-1. Supprimer l'intégration existante (Paramètres → Appareils et services)
-2. Redémarrer Home Assistant
-3. Mettre à jour via HACS
-4. Redémarrer Home Assistant
-5. Reconfigurer l'intégration
-
-#### Reconfigurer une intégration existante
-
 Depuis la v2.2.0, la configuration peut être modifiée à tout moment **sans supprimer l'intégration** :
 
 1. **Paramètres → Appareils et services**
