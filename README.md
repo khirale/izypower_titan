@@ -1,6 +1,6 @@
 # Izypower Titan — Home Assistant Integration
 
-[![Version](https://img.shields.io/badge/version-2.2.0-blue)](https://github.com/khirale/izypower_titan/releases)
+[![Version](https://img.shields.io/badge/version-2.3.0-blue)](https://github.com/khirale/izypower_titan/releases)
 [![HACS](https://img.shields.io/badge/HACS-Custom-orange)](https://hacs.xyz)
 [![HA](https://img.shields.io/badge/Home%20Assistant-2026.1+-green)](https://www.home-assistant.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
