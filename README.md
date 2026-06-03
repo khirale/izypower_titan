@@ -401,6 +401,19 @@ Indique le nombre de **jours entiers** écoulés depuis la dernière charge comp
 - **Dépendances** : `pyjwt` n'est plus pinned strict (`>=2.10.1,<3`) — évite les conflits avec d'autres intégrations
 - **Nettoyage** : suppression de code mort (`HOST_RE`, `async_set_soc`, imports inutilisés)
 
+
+### Nouveautés v2.3.0
+#### Nouveautés
+- **Suivi de charge complète / calibration BMS** : ajout de deux entités par Titan
+  - `binary_sensor` **Charge complète confirmée** — valide une charge réelle (SOC ≥ 100 % + état *Static* maintenus pendant le délai configuré, défaut 10 min) et émet l'événement `izypower_titan_full_charge_confirmed`.
+  - `sensor` **Jours depuis charge complète** — nombre de jours depuis la dernière charge complète confirmée, avec attribut `calibration_recommended` (> 14 j). Timestamp persistant entre redémarrages.
+
+#### Corrections / Améliorations
+- **Battery Temperature** : migration de l'ID `9012` → `11042` (l'ancien ID ne remontait plus de valeur correcte).
+- **Réactivation des capteurs d'énergie quotidienne** :
+  - `Battery Daily Charging Energy` (ID `6004`)
+  - `Battery Daily Discharging Energy` (ID `6005`)
+
 ---
 
 ---
