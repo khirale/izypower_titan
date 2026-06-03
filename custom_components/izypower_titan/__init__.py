@@ -29,6 +29,7 @@ from .const import (
     SOC_SECURITY_MAX,
 )
 from .coordinator import IzypowerTitanCoordinator
+from .storage import TitanCalibrationStorage
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -141,6 +142,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 max_charge=final_max_charge,
                 max_discharge=final_max_discharge,
             )
+
+            calibration_storage = TitanCalibrationStorage(hass, entry.entry_id, host)
+            await calibration_storage.async_load()
+            coordinator.calibration_storage = calibration_storage
 
             await coordinator.async_config_entry_first_refresh()
 
@@ -601,15 +606,14 @@ async def async_register_services(hass: HomeAssistant) -> None:
     discharge_limit = getattr(first_coordinator, "max_discharge_power", DEFAULT_MAX_DISCHARGE_POWER) if first_coordinator else DEFAULT_MAX_DISCHARGE_POWER
     max_power_limit = charge_limit
     
-    # Calculate max_discharge_power_limit based on override setting
     if first_coordinator:
         override = first_coordinator.config_entry.data.get(CONF_OVERRIDE_RESPONSIBILITY, False)
         if override:
-            max_discharge_power_limit = MAX_ABS_PER_TITAN  # 2400W
+            max_discharge_power_limit = MAX_ABS_PER_TITAN
         else:
-            max_discharge_power_limit = DISCHARGE_PER_TITAN  # 800W
+            max_discharge_power_limit = DISCHARGE_PER_TITAN
     else:
-        max_discharge_power_limit = DISCHARGE_PER_TITAN  # Default 800W
+        max_discharge_power_limit = DISCHARGE_PER_TITAN
 
     charge_schema = build_charge_schema(charge_limit)
     discharge_schema = build_discharge_schema(discharge_limit)

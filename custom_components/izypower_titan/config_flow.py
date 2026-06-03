@@ -13,10 +13,12 @@ from .cloud_api import IzyCloudAPI
 from .izypower_api import IzypowerAPI
 
 from .const import (
-    DOMAIN, DEFAULT_PORT, DEFAULT_SCAN_INTERVAL, CONF_CONNECTION_MODE, 
-    CONF_TITAN_COUNT, CONF_OVERRIDE_RESPONSIBILITY, DEFAULT_MAX_CHARGE_POWER, 
-    DEFAULT_MAX_DISCHARGE_POWER, CHARGE_PER_TITAN, DISCHARGE_PER_TITAN, 
-    MAX_ABS_PER_TITAN, MODE_LOCAL, MODE_CLOUD, CONNECTION_MODE_LABELS,CLUSTER_ROLE, CLUSTER_MASTER, CLUSTER_SLAVE, CLUSTER_NO_CLUSTER
+    DOMAIN, DEFAULT_PORT, DEFAULT_SCAN_INTERVAL, CONF_CONNECTION_MODE,
+    CONF_TITAN_COUNT, CONF_OVERRIDE_RESPONSIBILITY, DEFAULT_MAX_CHARGE_POWER,
+    DEFAULT_MAX_DISCHARGE_POWER, CHARGE_PER_TITAN, DISCHARGE_PER_TITAN,
+    MAX_ABS_PER_TITAN, MODE_LOCAL, MODE_CLOUD, CONNECTION_MODE_LABELS,
+    CLUSTER_ROLE, CLUSTER_MASTER, CLUSTER_SLAVE, CLUSTER_NO_CLUSTER,
+    CONF_FULL_CHARGE_CONFIRMATION_MINUTES, DEFAULT_FULL_CHARGE_CONFIRMATION_MINUTES,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -186,7 +188,7 @@ class IzypowerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._data.update(user_input)
             if user_input.get(CONF_OVERRIDE_RESPONSIBILITY):
                 return await self.async_step_power_override()
-            return await self.async_step_summary()
+            return await self.async_step_calibration()
 
         count = int(self._data.get(CONF_TITAN_COUNT, 1))
         default_override = self._data.get(CONF_OVERRIDE_RESPONSIBILITY, False)
@@ -209,7 +211,7 @@ class IzypowerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "exceed_absolute_limit"
             else:
                 self._data.update(user_input)
-                return await self.async_step_summary()
+                return await self.async_step_calibration()
 
         default_charge = self._data.get(DEFAULT_MAX_CHARGE_POWER, count * CHARGE_PER_TITAN)
         default_discharge = self._data.get(DEFAULT_MAX_DISCHARGE_POWER, count * DISCHARGE_PER_TITAN)
@@ -223,7 +225,31 @@ class IzypowerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
             description_placeholders={"max_abs": str(count * MAX_ABS_PER_TITAN)}
         )
-    
+
+    async def async_step_calibration(self, user_input: dict[str, Any] | None = None):
+        """Paramétrage du délai de confirmation de charge complète (calibration BMS)."""
+        if user_input is not None:
+            self._data.update(user_input)
+            return await self.async_step_summary()
+
+        default_minutes = self._data.get(
+            CONF_FULL_CHARGE_CONFIRMATION_MINUTES,
+            DEFAULT_FULL_CHARGE_CONFIRMATION_MINUTES,
+        )
+
+        return self.async_show_form(
+            step_id="calibration",
+            data_schema=vol.Schema({
+                vol.Required(
+                    CONF_FULL_CHARGE_CONFIRMATION_MINUTES,
+                    default=default_minutes,
+                ): vol.All(int, vol.Range(min=1, max=60)),
+            }),
+            description_placeholders={
+                "default_minutes": str(DEFAULT_FULL_CHARGE_CONFIRMATION_MINUTES),
+            },
+        )
+
     async def async_step_summary(self, user_input: dict[str, Any] | None = None):
         if user_input is not None:
             if self._is_reconfigure:
@@ -240,6 +266,10 @@ class IzypowerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         charge = self._data.get(DEFAULT_MAX_CHARGE_POWER, count * CHARGE_PER_TITAN)
         discharge = self._data.get(DEFAULT_MAX_DISCHARGE_POWER, count * DISCHARGE_PER_TITAN)
+        confirmation_min = self._data.get(
+            CONF_FULL_CHARGE_CONFIRMATION_MINUTES,
+            DEFAULT_FULL_CHARGE_CONFIRMATION_MINUTES,
+        )
 
         summary = (
             f"### 🏠 Résumé de votre configuration\n\n"
@@ -256,6 +286,8 @@ class IzypowerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             f"\n#### ⚡ Limites de puissance\n"
             f"- Charge max : **{charge} W**\n"
             f"- Décharge max : **{discharge} W**\n"
+            f"\n#### 🔋 Calibration BMS\n"
+            f"- Délai confirmation charge complète : **{confirmation_min} min**\n"
         )
 
         return self.async_show_form(
@@ -279,6 +311,10 @@ class IzypowerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 DEFAULT_MAX_CHARGE_POWER: self._data.get(DEFAULT_MAX_CHARGE_POWER, count * CHARGE_PER_TITAN),
                 DEFAULT_MAX_DISCHARGE_POWER: self._data.get(DEFAULT_MAX_DISCHARGE_POWER, count * DISCHARGE_PER_TITAN),
                 CLUSTER_ROLE: self._data.get(CLUSTER_ROLE),
+                CONF_FULL_CHARGE_CONFIRMATION_MINUTES: self._data.get(
+                    CONF_FULL_CHARGE_CONFIRMATION_MINUTES,
+                    DEFAULT_FULL_CHARGE_CONFIRMATION_MINUTES,
+                ),
             },
         )
 
@@ -297,6 +333,13 @@ class IzypowerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             DEFAULT_MAX_DISCHARGE_POWER, count * DISCHARGE_PER_TITAN
         )
         new_options[CLUSTER_ROLE] = self._data.get(CLUSTER_ROLE)
+        new_options[CONF_FULL_CHARGE_CONFIRMATION_MINUTES] = self._data.get(
+            CONF_FULL_CHARGE_CONFIRMATION_MINUTES,
+            entry.options.get(
+                CONF_FULL_CHARGE_CONFIRMATION_MINUTES,
+                DEFAULT_FULL_CHARGE_CONFIRMATION_MINUTES,
+            ),
+        )
 
         title = f"Izypower Titan Cluster ({count})"
 
@@ -333,8 +376,27 @@ class IzypowerOptionsFlowHandler(config_entries.OptionsFlow):
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
-                vol.Optional(CONF_SCAN_INTERVAL, default=entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)): vol.All(vol.Coerce(int), vol.Range(min=3, max=300)),
-                vol.Optional(DEFAULT_MAX_CHARGE_POWER, default=entry.options.get(DEFAULT_MAX_CHARGE_POWER, titan_count * CHARGE_PER_TITAN)): int,
-                vol.Optional(DEFAULT_MAX_DISCHARGE_POWER, default=entry.options.get(DEFAULT_MAX_DISCHARGE_POWER, titan_count * DISCHARGE_PER_TITAN)): int,
+                vol.Optional(
+                    CONF_SCAN_INTERVAL,
+                    default=entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+                ): vol.All(vol.Coerce(int), vol.Range(min=3, max=300)),
+
+                vol.Optional(
+                    DEFAULT_MAX_CHARGE_POWER,
+                    default=entry.options.get(DEFAULT_MAX_CHARGE_POWER, titan_count * CHARGE_PER_TITAN),
+                ): int,
+
+                vol.Optional(
+                    DEFAULT_MAX_DISCHARGE_POWER,
+                    default=entry.options.get(DEFAULT_MAX_DISCHARGE_POWER, titan_count * DISCHARGE_PER_TITAN),
+                ): int,
+
+                vol.Optional(
+                    CONF_FULL_CHARGE_CONFIRMATION_MINUTES,
+                    default=entry.options.get(
+                        CONF_FULL_CHARGE_CONFIRMATION_MINUTES,
+                        DEFAULT_FULL_CHARGE_CONFIRMATION_MINUTES,
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=60)),
             }),
         )

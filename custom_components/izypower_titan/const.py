@@ -15,6 +15,8 @@ CONNECTION_MODE_LABELS = {
     MODE_CLOUD: "Smart IA",
 }
 
+CONF_FULL_CHARGE_CONFIRMATION_MINUTES = "full_charge_confirmation_minutes"
+DEFAULT_FULL_CHARGE_CONFIRMATION_MINUTES = 10
 
 ENTITY_SCOPE_CLUSTER = "cluster"
 ENTITY_SCOPE_UNIT = "unit"
@@ -39,6 +41,7 @@ CLUSTER_NO_CLUSTER = "no_cluster"
 
 PLATFORMS = [
     Platform.SENSOR,
+    Platform.BINARY_SENSOR,
     Platform.BUTTON,
     Platform.NUMBER,
     Platform.SWITCH,
@@ -51,7 +54,7 @@ TITAN_IDS = [
     1664, 1665, 1666, 1667,       # DC Input Power 1..4 ✅
     1501,                         # Total DC Output Power ✅
     2108,                         # Total AC Output Power ✅
-    #1502,                         # Daily Production ✅
+    1502,                         # Daily Production ✅
     2101,                         # AC Input Power
     2107,                         # Total AC Input Energy ✅ Valeur Cluster
     2104,                         # Total AC Output Energy ✅Valeur Cluster
@@ -61,15 +64,15 @@ TITAN_IDS = [
     6002,                         # Battery SOC ✅
     6009,                         # Battery level ✅
     6105,                         # Emergency Power Supply ✅
-    #6004,                         # Battery Daily Charging Energy ✅
-    #6005,                         # Battery Daily Discharging Energy ✅
+    6004,                         # Battery Daily Charging Energy ✅
+    6005,                         # Battery Daily Discharging Energy ✅
     6006,                         # Battery Total Charging Energy ✅
     6007,                         # Battery Total Discharging Energy ✅
     7120,                         # Meter Connection ✅
     11016,                        # Meter Power ✅
     667,                          # Bypass Power ✅
     2098,                         # AC output ✅
-    9012,                         # Battery Temperature ✅
+    11042,                         # Battery Temperature ✅
     11019,                        # Remaining Charging Time ✅
     11020,                        # Residual Discharge Time ✅
     606,                          # Cluster Master/Slave ✅
@@ -80,6 +83,10 @@ TITAN_IDS = [
     680,                          # Backup ✅
     7171,                         # LEDs State
     9003,                         # Battertie cycles number
+    11005,                        # Battery inverter temperature
+    2600,                         # Grid Voltage
+    2612,                         # Grid Frequency
+    11010,                        # Feed-in Power Limit 
 
 ]
 
@@ -168,9 +175,10 @@ ID_META = {
     2108:  {"key": "total_ac_output_power", "name": "TITAN - Total AC Output Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
     2098:  {"key": "ac_output_power", "name": "TITAN - AC output Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
     2278:  {"key": "ac_input_output", "name": "TITAN - AC Input And Output", "unit": "W", "dev_class": "power", "state_class": "measurement"},
+    11010: {"key": "feedin_power_limit", "name": "TITAN - Feed-in Power Limit", "unit": "W", "dev_class": "power", "state_class": "measurement"},
     
     # Production/Energie
-    #1502:  {"key": "daily_production", "name": "TITAN - Daily Production", "unit": "kWh", "dev_class": "energy", "state_class": "total"},
+    1502:  {"key": "daily_production", "name": "TITAN - Daily Production", "unit": "kWh", "dev_class": "energy", "state_class": "total"},
     2101:  {"key": "ac_input_power", "name": "TITAN - AC Input Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
     2107:  {"key": "total_ac_input_energy", "name": "TITAN - Total AC Input Energy", "unit": "kWh", "dev_class": "energy", "state_class": "total_increasing"},
     2104:  {"key": "total_ac_output_energy", "name": "TITAN - Total AC Output Energy", "unit": "kWh", "dev_class": "energy", "state_class": "total_increasing"},
@@ -184,11 +192,13 @@ ID_META = {
     11009:  {"key": "charging_power", "name": "TITAN - Charging Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
     11011:  {"key": "discharging_power", "name": "TITAN - Discharging Power", "unit": "W", "dev_class": "power", "state_class": "measurement"},
     9003: {"key": "battery_cycle", "name": "Titan - Battery Cycles", "unit": None, "dev_class": None, "state_class": None},
+    2600:  {"key": "grid_voltage", "name": "TITAN - Grid Voltage", "unit": "V", "dev_class": "voltage", "state_class": "measurement"},
+    2612:  {"key": "grid_frequency", "name": "TITAN - Grid Frequency", "unit": "Hz", "dev_class": "frequency", "state_class": "measurement"},
     
     # Energie batterie
     6105:  {"key": "emergency_power_supply", "name": "TITAN - Battery SOC", "unit": "%", "state_class": "measurement"},
-    #6004:  {"key": "battery_daily_charging_energy", "name": "TITAN - Battery Daily Charging Energy", "unit": "kWh", "dev_class": "energy", "state_class": "total"},
-    #6005:  {"key": "battery_daily_discharging_energy", "name": "TITAN - Battery Daily Discharging Energy", "unit": "kWh", "dev_class": "energy", "state_class": "total"},
+    6004:  {"key": "battery_daily_charging_energy", "name": "TITAN - Battery Daily Charging Energy", "unit": "kWh", "dev_class": "energy", "state_class": "total"},
+    6005:  {"key": "battery_daily_discharging_energy", "name": "TITAN - Battery Daily Discharging Energy", "unit": "kWh", "dev_class": "energy", "state_class": "total"},
     6006:  {"key": "battery_total_charging_energy", "name": "TITAN - Battery Total Charging Energy", "unit": "kWh", "dev_class": "energy", "state_class": "total_increasing"},
     6007:  {"key": "battery_total_discharging_energy", "name": "TITAN - Battery Total Discharging Energy", "unit": "kWh", "dev_class": "energy", "state_class": "total_increasing"},
     
@@ -201,7 +211,8 @@ ID_META = {
     7171:  {"key": "leds", "name": "TITAN - LEDs State", "dev_class": "enum", "state_mapping": {0: "OFF", 1: "ON"}},
     
     # Températures
-    9012:  {"key": "battery_temperature", "name": "TITAN - Battery Temperature", "unit": "°C", "dev_class": "temperature", "state_class": "measurement"},
+    11042:  {"key": "battery_temperature", "name": "TITAN - Battery Temperature", "unit": "°C", "dev_class": "temperature", "state_class": "measurement"},
+    11005: {"key": "battery_inverter_temperature", "name": "TITAN - Inverter Temperature", "unit": "°C", "dev_class": "temperature", "state_class": "measurement"},
 
     # Temps de charge/décharge
     11019: {"key": "remaining_charging_time", "name": "TITAN - Remaining Charging Time", "unit": "min", "state_class": "measurement"},

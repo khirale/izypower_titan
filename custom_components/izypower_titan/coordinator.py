@@ -14,8 +14,6 @@ from .const import (
     DOMAIN,
     DEFAULT_SCAN_INTERVAL,
     TITAN_IDS,
-    CONF_CONNECTION_MODE,
-    MODE_CLOUD,
     LINK_ID_GROUPS,
     ID_META,
     LINK_ID_META,
@@ -94,6 +92,8 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         self._last_energy_ts: dict[str, datetime] = {}
         self._last_valid_b: dict[str, float] = {}
         self._last_valid_c: dict[str, Any] = {}
+
+        self.calibration_storage = None
 
     def _is_daily_energy(self, meta: dict[str, Any]) -> bool:
         key = meta.get("key", "").lower()
@@ -423,7 +423,6 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         return await self.api.async_set_max_power_register(value, self.max_charge_power)
 
     async def async_set_max_discharge_power_register(self, value: int):
-        """Wrapper method to call API with max_discharge_power parameter based on override setting."""
         from .const import CONF_TITAN_COUNT, CONF_OVERRIDE_RESPONSIBILITY, DISCHARGE_PER_TITAN, MAX_ABS_PER_TITAN
         
         override = self.config_entry.data.get(CONF_OVERRIDE_RESPONSIBILITY, False)

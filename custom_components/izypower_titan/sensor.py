@@ -2,14 +2,15 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorDeviceClass,
     SensorEntityDescription,
+    SensorStateClass,
 )
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import EntityCategory
+from homeassistant.util import dt as dt_util
 from dataclasses import dataclass, field
 from typing import Any
 from homeassistant.const import (
     UnitOfEnergy,
-    UnitOfPower,
 )
 import logging
 
@@ -78,6 +79,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
             entities.append(
                 IzypowerCloudStatusSensor(coordinator, "cloud_status", "TITAN - Cloud Status")
             )
+
+        if coordinator.calibration_storage is not None:
+            entities.append(TitanDaysSinceFullChargeSensor(coordinator))
 
     async_add_entities(entities)
     await async_setup_link_entry(hass, entry, async_add_entities)
@@ -162,6 +166,37 @@ class IzypowerSensorEntity(CoordinatorEntity, SensorEntity):
                 return str(raw_value)
 
         return value
+
+
+class TitanDaysSinceFullChargeSensor(CoordinatorEntity, SensorEntity):
+
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:battery-clock-outline"
+
+    def __init__(self, coordinator) -> None:
+        super().__init__(coordinator)
+
+        self._attr_unique_id = f"{DOMAIN}_{coordinator.host}_days_since_full_charge"
+        self._attr_name = "Jours depuis charge complète"
+        self._attr_native_unit_of_measurement = "j"
+        self._attr_device_info = coordinator.device_info
+
+    @property
+    def native_value(self) -> int:
+        last = self.coordinator.calibration_storage.get_last_full_charge()
+        if last is None:
+            return 0
+        delta = dt_util.now() - last
+        return delta.days
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        last = self.coordinator.calibration_storage.get_last_full_charge()
+        days = self.native_value
+        return {
+            "last_full_charge": last.isoformat() if last else None,
+            "calibration_recommended": (days > 14),
+        }
 
 
 class IzypowerCloudStatusSensor(CoordinatorEntity, SensorEntity):

@@ -81,6 +81,7 @@ class IzypowerTitanRegisterOffGridSwitch(CoordinatorEntity, SwitchEntity):
             self.async_write_ha_state()
             
             await self.coordinator.api.async_set_register_off_grid(1)
+            await self.coordinator.async_request_refresh()
             
         except Exception as err:
             self._optimistic_state = None
@@ -96,6 +97,7 @@ class IzypowerTitanRegisterOffGridSwitch(CoordinatorEntity, SwitchEntity):
             self.async_write_ha_state()
             
             await self.coordinator.api.async_set_register_off_grid(0)
+            await self.coordinator.async_request_refresh()
             
         except Exception as err:
             self._optimistic_state = None
@@ -187,6 +189,7 @@ class IzypowerTitanRegisterLEDSwitch(CoordinatorEntity, SwitchEntity):
             self.async_write_ha_state()
             
             await self.coordinator.api.async_set_register_led(1)
+            await self.coordinator.async_request_refresh()
             
         except Exception as err:
             self._optimistic_state = None
@@ -202,6 +205,7 @@ class IzypowerTitanRegisterLEDSwitch(CoordinatorEntity, SwitchEntity):
             self.async_write_ha_state()
             
             await self.coordinator.api.async_set_register_led(0)
+            await self.coordinator.async_request_refresh()
             
         except Exception as err:
             self._optimistic_state = None
