@@ -17,7 +17,6 @@
 </p>
 
 
-
 ---
 
 🇫🇷 [Français](#français) · 🇬🇧 [English](#english)
@@ -38,6 +37,7 @@ Supporte le pilotage local (MR1) et cloud (Smart IA), les clusters multi-Titans,
 - [Services](#services)
 - [Cluster multi-Titans](#cluster-multi-titans)
 - [Batteries Link](#batteries-link)
+- [Calibration BMS](#calibration-bms)
 - [Nouveautés v2.2.0](#nouveautés-v220)
 
 ---
@@ -134,6 +134,8 @@ Cas couverts :
 |--------|----------|-------|-------------|
 | Total AC Input Energy | 2107 | kWh | Énergie totale importée (valeur cluster) |
 | Total AC Output Energy | 2104 | kWh | Énergie totale exportée (valeur cluster) |
+| Battery Daily Charging Energy | 6004 | kWh | Charge quotidienne de la batterie |
+| Battery Daily Discharging Energy| 6005 | kWh | Décharge quotidienne de la batterie |
 | Battery Total Charging Energy | 6006 | kWh | Énergie totale chargée (lifetime) |
 | Battery Total Discharging Energy | 6007 | kWh | Énergie totale déchargée (lifetime) |
 | Rated Capacity | 142 | kWh | Capacité nominale de la batterie |
@@ -149,7 +151,7 @@ Cas couverts :
 | Battery SOC | 6105 | % | SOC batterie (EPS) |
 | Charging Power | 11009 | W | Puissance de charge instantanée |
 | Discharging Power | 11011 | W | Puissance de décharge instantanée |
-| Battery Temperature | 9012 | °C | Température de la batterie |
+| Battery Temperature | 11042 | °C | Température de la batterie |
 | Battery Cycles | 9003 | — | Nombre de cycles lifetime |
 | Remaining Charging Time | 11019 | min | Temps de charge restant estimé |
 | Residual Discharge Time | 11020 | min | Temps de décharge restant estimé |
@@ -310,6 +312,70 @@ Très utile pour le support — joignez ce fichier à toute issue GitHub.
 
 ---
 
+##  Calibration BMS
+
+L'intégration suit automatiquement la dernière charge complète confirmée de la batterie afin d'aider à la calibration du BMS (recommandée périodiquement pour éviter la dérive du SOC). Deux entités sont exposées par Titan.
+
+### `binary_sensor` – Charge complète confirmée
+
+Détecte qu'une charge complète **réelle** a eu lieu, et non un simple pic transitoire à 100 %.
+
+- **État `on`** : charge complète confirmée (le délai de maintien a été atteint, la session est enregistrée).
+- **État `off`** : condition non remplie, ou délai pas encore atteint.
+
+**Condition de confirmation :**
+
+| Registre | Description | Valeur requise |
+| --- | --- | --- |
+| `6002` | Battery SOC (Pile Average – moyenne cluster + Link) | ≥ 100 % |
+| `6001` | Battery State | Static (1000) |
+
+Les deux conditions doivent être tenues **simultanément et sans interruption** pendant au moins `full_charge_confirmation_minutes` minutes (voir options, défaut **10 min**). Toute perte de condition réinitialise le compteur.
+
+**Attributs :**
+
+| Attribut | Description |
+| --- | --- |
+| `confirmation_delay_min` | Délai de confirmation configuré (minutes) |
+| `confirmation_progress_pct` | Progression vers la confirmation (0–100 %) |
+| `confirmation_progress_s` | Temps écoulé depuis le début de la condition (secondes) |
+
+**Événement Home Assistant :**
+
+À chaque confirmation, l'intégration émet l'événement `izypower_titan_full_charge_confirmed`, exploitable dans vos automatisations :
+
+```yaml
+trigger:
+  - platform: event
+    event_type: izypower_titan_full_charge_confirmed
+# Données : entry_id, host, serial_number, timestamp (ISO, heure locale)
+```
+
+### `sensor` – Jours depuis charge complète
+
+Indique le nombre de **jours entiers** écoulés depuis la dernière charge complète confirmée.
+
+- **Unité** : `j`
+- **Valeur** : `0` si aucune charge complète n'a encore été confirmée depuis l'installation.
+- Pas de `state_class` : la valeur se remet à zéro à chaque nouvelle charge complète, elle n'est donc pas destinée aux statistiques long terme.
+
+**Attributs :**
+
+| Attribut | Description |
+| --- | --- |
+| `last_full_charge` | Horodatage ISO de la dernière charge complète confirmée (`null` si jamais) |
+| `calibration_recommended` | `true` lorsque la valeur dépasse **14 jours** |
+
+> 💡 Le timestamp de la dernière charge complète est **persistant** : il survit aux redémarrages de Home Assistant (stocké dans `.storage`).
+
+### ⚙️ Option de configuration
+
+| Option | Description | Défaut |
+| --- | --- | --- |
+| `full_charge_confirmation_minutes` | Durée de maintien (SOC ≥ 100 % + State Static) requise pour valider une charge complète | `10` |
+
+---
+
 ### Nouveautés v2.2.0
 
 #### Corrections critiques
@@ -353,6 +419,7 @@ Supports local control (MR1), cloud control (Smart IA), multi-Titan clusters, an
 - [Services](#services-1)
 - [Multi-Titan cluster](#multi-titan-cluster)
 - [Link batteries](#link-batteries)
+- [BMS calibration](#bms-calibration)
 - [What's new in v2.2.0](#whats-new-in-v220)
 
 ---
@@ -459,6 +526,8 @@ Supported scenarios:
 |--------|----------|------|-------------|
 | Total AC Input Energy | 2107 | kWh | Total imported energy (cluster value) |
 | Total AC Output Energy | 2104 | kWh | Total exported energy (cluster value) |
+| Battery Daily Charging Energy | 6004 | kWh | Daily Charging Energy |
+| Battery Daily Discharging Energy| 6005 | kWh | Daily Discharging Energy |
 | Battery Total Charging Energy | 6006 | kWh | Total lifetime charging energy |
 | Battery Total Discharging Energy | 6007 | kWh | Total lifetime discharging energy |
 | Rated Capacity | 142 | kWh | Nominal battery capacity |
@@ -474,7 +543,7 @@ Supported scenarios:
 | Battery SOC | 6105 | % | Battery SOC (EPS) |
 | Charging Power | 11009 | W | Instantaneous charging power |
 | Discharging Power | 11011 | W | Instantaneous discharging power |
-| Battery Temperature | 9012 | °C | Battery temperature |
+| Battery Temperature | 11042 | °C | Battery temperature |
 | Battery Cycles | 9003 | — | Lifetime cycle count |
 | Remaining Charging Time | 11019 | min | Estimated time to full charge |
 | Residual Discharge Time | 11020 | min | Estimated remaining discharge time |
@@ -632,6 +701,70 @@ The JSON file contains:
 - Sanitized configuration (password and username redacted)
 
 Very useful for support — attach this file to any GitHub issue.
+
+---
+
+##  BMS Calibration
+
+The integration automatically tracks the battery's last confirmed full charge, helping with periodic BMS calibration (recommended to prevent SOC drift). Two entities are exposed per Titan.
+
+### `binary_sensor` – Full charge confirmed
+
+Detects that a **real** full charge occurred, rather than a brief transient spike to 100 %.
+
+- **State `on`**: full charge confirmed (hold delay reached, session recorded).
+- **State `off`**: condition not met, or delay not yet reached.
+
+**Confirmation condition:**
+
+| Register | Description | Required value |
+| --- | --- | --- |
+| `6002` | Battery SOC (Pile Average – cluster + Link average) | ≥ 100 % |
+| `6001` | Battery State | Static (1000) |
+
+Both conditions must be held **simultaneously and without interruption** for at least `full_charge_confirmation_minutes` minutes (see options, default **10 min**). Any loss of condition resets the timer.
+
+**Attributes:**
+
+| Attribute | Description |
+| --- | --- |
+| `confirmation_delay_min` | Configured confirmation delay (minutes) |
+| `confirmation_progress_pct` | Progress toward confirmation (0–100 %) |
+| `confirmation_progress_s` | Elapsed time since the condition started (seconds) |
+
+**Home Assistant event:**
+
+On each confirmation, the integration fires the `izypower_titan_full_charge_confirmed` event, usable in your automations:
+
+```yaml
+trigger:
+  - platform: event
+    event_type: izypower_titan_full_charge_confirmed
+# Data: entry_id, host, serial_number, timestamp (ISO, local time)
+```
+
+### `sensor` – Days since full charge
+
+Reports the number of **whole days** since the last confirmed full charge.
+
+- **Unit**: `j`
+- **Value**: `0` if no full charge has been confirmed yet since installation.
+- No `state_class`: the value resets to zero on every new full charge, so it is not intended for long-term statistics.
+
+**Attributes:**
+
+| Attribute | Description |
+| --- | --- |
+| `last_full_charge` | ISO timestamp of the last confirmed full charge (`null` if never) |
+| `calibration_recommended` | `true` when the value exceeds **14 days** |
+
+> 💡 The last full-charge timestamp is **persistent**: it survives Home Assistant restarts (stored in `.storage`).
+
+### ⚙️ Configuration option
+
+| Option | Description | Default |
+| --- | --- | --- |
+| `full_charge_confirmation_minutes` | Hold duration (SOC ≥ 100 % + Static state) required to validate a full charge | `10` |
 
 ---
 
