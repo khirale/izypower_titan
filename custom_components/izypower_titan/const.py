@@ -211,7 +211,7 @@ ID_META = {
     7171:  {"key": "leds", "name": "TITAN - LEDs State", "dev_class": "enum", "state_mapping": {0: "OFF", 1: "ON"}},
     
     # Températures
-    11042:  {"key": "battery_temperature", "name": "TITAN - Battery Temperature", "unit": "°C", "dev_class": "temperature", "state_class": "measurement"},
+    9012:  {"key": "battery_temperature", "name": "TITAN - Battery Temperature", "unit": "°C", "dev_class": "temperature", "state_class": "measurement"},
     11005: {"key": "battery_inverter_temperature", "name": "TITAN - Inverter Temperature", "unit": "°C", "dev_class": "temperature", "state_class": "measurement"},
 
     # Temps de charge/décharge
