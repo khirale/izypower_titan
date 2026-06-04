@@ -72,7 +72,7 @@ TITAN_IDS = [
     11016,                        # Meter Power ✅
     667,                          # Bypass Power ✅
     2098,                         # AC output ✅
-    11042,                         # Battery Temperature ✅
+    9012,                         # Battery Temperature ✅
     11019,                        # Remaining Charging Time ✅
     11020,                        # Residual Discharge Time ✅
     606,                          # Cluster Master/Slave ✅
