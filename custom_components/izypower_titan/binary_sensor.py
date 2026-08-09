@@ -1,4 +1,3 @@
-"""Binary sensors pour Izypower Titan – Calibration BMS."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -59,6 +58,7 @@ class TitanFullChargeConfirmedSensor(CoordinatorEntity, BinarySensorEntity):
 
         self._condition_met_since: datetime | None = None
         self._session_recorded: bool = False
+        self._startup_session_checked: bool = False
 
     def _confirmation_delay(self) -> timedelta:
         minutes = self.coordinator.config_entry.options.get(
@@ -88,6 +88,21 @@ class TitanFullChargeConfirmedSensor(CoordinatorEntity, BinarySensorEntity):
         )
 
         now = dt_util.utcnow()
+
+        if not self._startup_session_checked:
+            self._startup_session_checked = True
+            if condition_ok:
+                last = self.coordinator.calibration_storage.get_last_full_charge()
+                if last is not None:
+                    if last.tzinfo is None:
+                        last = last.replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)
+                    if dt_util.now() - last < timedelta(hours=24):
+                        self._session_recorded = True
+                        _LOGGER.debug(
+                            "Titan %s – 100%% déjà vrai au démarrage, session du %s "
+                            "considérée déjà enregistrée",
+                            self.coordinator.host, last.isoformat(),
+                        )
 
         if condition_ok:
             if self._condition_met_since is None:
@@ -121,7 +136,6 @@ class TitanFullChargeConfirmedSensor(CoordinatorEntity, BinarySensorEntity):
         self.async_write_ha_state()
 
     async def _record_full_charge(self, confirmed_at_utc: datetime) -> None:
-        """Persiste le timestamp et émet un event HA."""
         local_dt = dt_util.as_local(confirmed_at_utc)
         storage = self.coordinator.calibration_storage
 

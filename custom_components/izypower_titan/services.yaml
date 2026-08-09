@@ -1,6 +1,3 @@
-# ---------------------------------------------------------
-# SERVICES LOCAUX (via RPC)
-# ---------------------------------------------------------
 
 set_realtime_mode:
   name: Set Real-Time Mode
@@ -23,6 +20,67 @@ set_selfconsumed_mode:
     device_id:
       name: Device
       description: L'appareil à contrôler (optionnel si un seul appareil).
+      required: false
+      selector:
+        device:
+          integration: izypower_titan
+
+set_intelligent_mode:
+  name: Set Intelligent Mode
+  description: >
+    Passe l'appareil en mode Intelligent (libellé Smart IA).
+    Équivalent backend du mode temps réel (Mode 4) — libellé distinct
+    pour coller à l'application Smart IA.
+  fields:
+    device_id:
+      name: Device
+      description: L'appareil à contrôler (optionnel si un seul appareil).
+      required: false
+      selector:
+        device:
+          integration: izypower_titan
+
+set_max_power:
+  name: Set Max Charge Power (1138)
+  description: >
+    Modifie la limite locale de puissance de charge (registre 1138).
+    Commande cluster avec rollback en cas d'échec partiel.
+  fields:
+    value:
+      name: Limite Max Charge
+      description: Valeur en Watts.
+      required: true
+      selector:
+        number:
+          min: 50
+          max: 4800
+          unit_of_measurement: "W"
+    device_id:
+      name: Device
+      description: Master du cluster (la commande s'applique à tous les membres).
+      required: false
+      selector:
+        device:
+          integration: izypower_titan
+
+set_max_discharge_power:
+  name: Set Max Discharge Power (1147)
+  description: >
+    Modifie la limite locale de puissance de décharge (registre 1147).
+    Commande cluster avec rollback en cas d'échec partiel.
+  fields:
+    value:
+      name: Limite Max Décharge
+      description: Valeur en Watts.
+      required: true
+      selector:
+        number:
+          min: 100
+          max: 4800
+          unit_of_measurement: "W"
+    device_id:
+      name: Device
+      description: Master du cluster (la commande s'applique à tous les membres).
       required: false
       selector:
         device:
@@ -82,9 +140,6 @@ stop:
   fields:
     device_id: *device_id_field
 
-# ---------------------------------------------------------
-# SERVICES CLOUD (via IzyPower API)
-# ---------------------------------------------------------
 
 cloud_charge_manual:
   name: Cloud Start Charge
@@ -160,9 +215,9 @@ set_cloud_standby_mode:
   fields:
     device_id: *device_id_field
 
-set_register_7266:
-  name: Set Register 7266
-  description: Configure le registre 7266 (0=OFF, 1=ON) - Commande unitaire par batterie
+set_register_off_grid:
+  name: Set Off-Grid (7266)
+  description: Configure le mode Off-Grid via le registre 7266 (0=OFF, 1=ON) - Commande unitaire par batterie
   fields:
     value:
       name: Valeur

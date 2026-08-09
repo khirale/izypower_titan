@@ -6,7 +6,6 @@ from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.core import callback
-from homeassistant.exceptions import HomeAssistantError
 
 from .const import (
     DOMAIN, 
@@ -14,7 +13,6 @@ from .const import (
     CONNECTION_MODE_LABELS, 
     CONTROL, 
     ENTITY_SCOPE_CLUSTER, 
-    ENTITY_SCOPE_UNIT,
     SOC_SECURITY_MIN,
     SOC_SECURITY_MAX,
     SOC_SECURITY_STEP,
@@ -223,7 +221,6 @@ class IzypowerCloudMaxPowerNumber(CoordinatorEntity, NumberEntity, RestoreEntity
 
 
 class IzypowerSocSecurityNumber(CoordinatorEntity, NumberEntity, RestoreEntity):
-    #_attr_entity_picture = "/local/battery_red.png"
     profile = "common"
     scope = ENTITY_SCOPE_CLUSTER
 
@@ -279,7 +276,6 @@ class IzypowerSocSecurityNumber(CoordinatorEntity, NumberEntity, RestoreEntity):
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        """Update value from sensor 6105, respecting optimistic mode."""
         data = self.coordinator.data or {}
         raw_value = data.get("6105")
 
@@ -441,14 +437,14 @@ class IzypowerMaxDischargePowerNumber(CoordinatorEntity, NumberEntity, RestoreEn
         self._attr_name = "Max Discharge Power"
         self._attr_device_info = coordinator.device_info
 
-        from .const import CONF_TITAN_COUNT, CONF_OVERRIDE_RESPONSIBILITY, DISCHARGE_PER_TITAN, MAX_ABS_PER_TITAN
+        from .const import CONF_OVERRIDE_RESPONSIBILITY, DISCHARGE_PER_TITAN, MAX_ABS_PER_TITAN
         
         override = entry.data.get(CONF_OVERRIDE_RESPONSIBILITY, False)
         
         if override:
-            self._attr_native_max_value = float(MAX_ABS_PER_TITAN)  # 2400W
+            self._attr_native_max_value = float(MAX_ABS_PER_TITAN)
         else:
-            self._attr_native_max_value = float(DISCHARGE_PER_TITAN)  # 800W
+            self._attr_native_max_value = float(DISCHARGE_PER_TITAN)
 
         self._value: float | None = None
 

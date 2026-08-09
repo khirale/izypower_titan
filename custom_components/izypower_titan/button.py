@@ -5,7 +5,7 @@ import logging
 from homeassistant.components.button import ButtonEntity
 from homeassistant.helpers import entity_registry as er
 from homeassistant.exceptions import HomeAssistantError
-from .const import DOMAIN, CONF_CONNECTION_MODE, CONNECTION_MODE_LABELS, CONTROL, ENTITY_SCOPE_CLUSTER, ENTITY_SCOPE_UNIT
+from .const import DOMAIN, CONF_CONNECTION_MODE, CONNECTION_MODE_LABELS, CONTROL, ENTITY_SCOPE_CLUSTER
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,7 +58,6 @@ class IzypowerTitanBaseButton(ButtonEntity):
     
     def __init__(self, coordinator, unique_suffix: str, name: str):
         self.coordinator = coordinator
-        entry = coordinator.config_entry
         host = coordinator.host
 
         self._host = host

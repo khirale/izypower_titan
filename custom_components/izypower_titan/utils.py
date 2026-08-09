@@ -31,6 +31,7 @@ def map_device_class(dc: str | None):
         case "voltage": return SensorDeviceClass.VOLTAGE
         case "current": return SensorDeviceClass.CURRENT
         case "temperature": return SensorDeviceClass.TEMPERATURE
+        case "frequency": return SensorDeviceClass.FREQUENCY
         case "enum": return SensorDeviceClass.ENUM
         case _: return None
 

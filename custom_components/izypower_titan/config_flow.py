@@ -1,23 +1,22 @@
 import logging
 from typing import Any
+import aiohttp
 import voluptuous as vol
 import json
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from homeassistant import config_entries
 from homeassistant.core import callback
-from homeassistant.const import CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL, CONF_USERNAME, CONF_PASSWORD
+from homeassistant.const import CONF_PORT, CONF_SCAN_INTERVAL, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig, SelectSelectorMode
 from .cloud_api import IzyCloudAPI
-from .izypower_api import IzypowerAPI
 
 from .const import (
     DOMAIN, DEFAULT_PORT, DEFAULT_SCAN_INTERVAL, CONF_CONNECTION_MODE,
     CONF_TITAN_COUNT, CONF_OVERRIDE_RESPONSIBILITY, DEFAULT_MAX_CHARGE_POWER,
     DEFAULT_MAX_DISCHARGE_POWER, CHARGE_PER_TITAN, DISCHARGE_PER_TITAN,
     MAX_ABS_PER_TITAN, MODE_LOCAL, MODE_CLOUD, CONNECTION_MODE_LABELS,
-    CLUSTER_ROLE, CLUSTER_MASTER, CLUSTER_SLAVE, CLUSTER_NO_CLUSTER,
+    CLUSTER_ROLE, CLUSTER_MASTER, CLUSTER_NO_CLUSTER,
     CONF_FULL_CHARGE_CONFIRMATION_MINUTES, DEFAULT_FULL_CHARGE_CONFIRMATION_MINUTES,
 )
 
@@ -93,11 +92,13 @@ class IzypowerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     f"/rpc/Indevolt.GetData?config={config_param}"
                 )
 
-                async with session.post(url) as resp:
+                async with session.post(
+                    url, timeout=aiohttp.ClientTimeout(total=10)
+                ) as resp:
                     resp.raise_for_status()
                     data = await resp.json()
 
-                cluster_state = int(data["606"])
+                cluster_state = int(float(data["606"]))
 
                 if cluster_state == 1001:
                     errors["base"] = "cluster_slave_detected"
@@ -227,7 +228,6 @@ class IzypowerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_calibration(self, user_input: dict[str, Any] | None = None):
-        """Paramétrage du délai de confirmation de charge complète (calibration BMS)."""
         if user_input is not None:
             self._data.update(user_input)
             return await self.async_step_summary()

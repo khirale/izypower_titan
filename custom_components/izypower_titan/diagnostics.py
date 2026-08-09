@@ -1,4 +1,3 @@
-"""Diagnostics support for Izypower Titan."""
 from __future__ import annotations
 
 from typing import Any
@@ -9,7 +8,7 @@ from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
 
-TO_REDACT = {"username", "password", "token", "wifi_ssid", "wifi_ip"}
+TO_REDACT = {"username", "password", "token", "wifi_ssid", "wifi_ip", "serial_number", "0"}
 
 
 async def async_get_config_entry_diagnostics(
@@ -53,12 +52,15 @@ async def async_get_config_entry_diagnostics(
             ),
         }
 
-    return {
-        "entry": {
-            "data": async_redact_data(dict(entry.data), TO_REDACT),
-            "options": dict(entry.options),
-            "version": entry.version,
-            "title": entry.title,
+    return async_redact_data(
+        {
+            "entry": {
+                "data": dict(entry.data),
+                "options": dict(entry.options),
+                "version": entry.version,
+                "title": entry.title,
+            },
+            "coordinators": coordinators_diag,
         },
-        "coordinators": coordinators_diag,
-    }
+        TO_REDACT,
+    )

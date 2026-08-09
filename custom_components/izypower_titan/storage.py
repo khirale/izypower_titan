@@ -41,8 +41,3 @@ class TitanCalibrationStorage:
         except (ValueError, TypeError):
             _LOGGER.warning("Timestamp de calibration invalide en storage : %s", ts)
             return None
-
-    async def async_clear(self) -> None:
-        self._data = {}
-        await self._store.async_save(self._data)
-        _LOGGER.info("Calibration storage effacé")

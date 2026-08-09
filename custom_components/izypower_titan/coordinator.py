@@ -9,6 +9,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.util import dt as dt_util
 
 from .const import (
     DOMAIN,
@@ -26,6 +27,8 @@ _LOGGER = logging.getLogger(__name__)
 WIFI_CLOUD_INTERVAL = timedelta(seconds=60)
 WATCHDOG_TIMEOUT = timedelta(minutes=5)
 
+BATTERY_POWER_IDS = {"6000", "11009", "11011"}
+
 
 def _decimal_precision(val: float) -> int:
     s = f"{val:.10f}".rstrip("0")
@@ -36,7 +39,8 @@ def _decimal_precision(val: float) -> int:
 
 class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
 
-    def __init__(self, hass, entry: ConfigEntry, host: str, max_charge: int, max_discharge: int):
+    def __init__(self, hass, entry: ConfigEntry, host: str, max_charge: int, max_discharge: int,
+                 cloud_api: IzyCloudAPI | None = None):
         scan_interval = entry.options.get(
             "scan_interval",
             entry.data.get("scan_interval", DEFAULT_SCAN_INTERVAL),
@@ -59,7 +63,7 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             session=self.session,
         )
 
-        self.cloud_api = IzyCloudAPI(
+        self.cloud_api = cloud_api or IzyCloudAPI(
             username=entry.data.get("username", ""),
             password=entry.data.get("password", ""),
             session=self.session,
@@ -76,6 +80,7 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         self._max_consecutive_errors = 3
         self._first_update = True
         self.serial_number: str | None = None
+        self._device_identifier: str | None = None
         self.last_http_ok = False
 
         self._last_successful_poll: datetime | None = None
@@ -92,6 +97,8 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         self._last_energy_ts: dict[str, datetime] = {}
         self._last_valid_b: dict[str, float] = {}
         self._last_valid_c: dict[str, Any] = {}
+
+        self._non_sticky_c_ids: set[str] = {"8100"}
 
         self.calibration_storage = None
 
@@ -136,7 +143,7 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         )
 
     async def _async_update_data(self) -> Dict[str, Any]:
-        now = datetime.now()
+        now = dt_util.utcnow()
         self.last_http_ok = False
 
         try:
@@ -222,8 +229,6 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
 
                 dt_h = max((now - last_ts).total_seconds(), 1) / 3600.0
 
-                # After a long offline period, accept the new value as baseline
-                # without delta check — the device was simply unreachable
                 if dt_h > 1.0:
                     self._last_valid_energy[sid] = value
                     self._last_energy_ts[sid] = now
@@ -289,7 +294,8 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
                     _LOGGER.debug("B %s rejected (SOC out of range): %s", sid, value)
                     continue
 
-                if dev_class == "power" and abs(value) > p_max_allowed:
+                if (dev_class == "power" and sid in BATTERY_POWER_IDS
+                        and abs(value) > p_max_allowed):
                     if sid in self._last_valid_b:
                         validated_b_data[sid] = self._last_valid_b[sid]
                     _LOGGER.debug("B %s rejected (power out of range): %s", sid, value)
@@ -307,7 +313,7 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             validated_c_data: dict[str, Any] = {}
             for sid in self._category_c_ids:
                 if sid not in raw_data:
-                    if sid in self._last_valid_c:
+                    if sid not in self._non_sticky_c_ids and sid in self._last_valid_c:
                         validated_c_data[sid] = self._last_valid_c[sid]
                         _LOGGER.debug("C %s missing, keep last=%s", sid, validated_c_data[sid])
                     continue
@@ -315,7 +321,7 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
                 raw_value = raw_data.get(sid)
 
                 if raw_value is None:
-                    if sid in self._last_valid_c:
+                    if sid not in self._non_sticky_c_ids and sid in self._last_valid_c:
                         validated_c_data[sid] = self._last_valid_c[sid]
                         _LOGGER.debug("C %s is None, keep last=%s", sid, validated_c_data[sid])
                     continue
@@ -330,6 +336,10 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
                 validated_c_data[sid] = value
 
             merged = self.data.copy() if self.data else {}
+
+            for sid in self._non_sticky_c_ids:
+                merged.pop(sid, None)
+
             merged.update(validated_data)
             merged.update(validated_b_data)
             merged.update(validated_c_data)
@@ -415,22 +425,20 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         )
 
     async def async_set_soc_security_register(self, value: int):
-        """Wrapper method to call API with SOC security register."""
         return await self.api.async_set_soc_security_register(value)
 
     async def async_set_max_power_register(self, value: int):
-        """Wrapper method to call API with max_charge_power parameter."""
         return await self.api.async_set_max_power_register(value, self.max_charge_power)
 
     async def async_set_max_discharge_power_register(self, value: int):
-        from .const import CONF_TITAN_COUNT, CONF_OVERRIDE_RESPONSIBILITY, DISCHARGE_PER_TITAN, MAX_ABS_PER_TITAN
+        from .const import CONF_OVERRIDE_RESPONSIBILITY, DISCHARGE_PER_TITAN, MAX_ABS_PER_TITAN
         
         override = self.config_entry.data.get(CONF_OVERRIDE_RESPONSIBILITY, False)
         
         if override:
-            max_power = MAX_ABS_PER_TITAN  # 2400W
+            max_power = MAX_ABS_PER_TITAN
         else:
-            max_power = DISCHARGE_PER_TITAN  # 800W
+            max_power = DISCHARGE_PER_TITAN
         
         return await self.api.async_set_max_discharge_power_register(value, max_power)
 
@@ -471,8 +479,14 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             )
 
     @property
+    def device_identifier(self) -> str:
+        if self._device_identifier is None:
+            self._device_identifier = self.serial_number or self.host
+        return self._device_identifier
+
+    @property
     def device_info(self) -> DeviceInfo:
-        identifiers = {(DOMAIN, self.serial_number or self.host)}
+        identifiers = {(DOMAIN, self.device_identifier)}
 
         return DeviceInfo(
             identifiers=identifiers,
@@ -484,3 +498,4 @@ class IzypowerTitanCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
 
     async def async_shutdown(self) -> None:
         _LOGGER.debug("Shutting down Izypower coordinator")
+        await super().async_shutdown()

@@ -4,6 +4,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from .const import DOMAIN, LINK_ID_META
+from .utils import normalize_unit, map_device_class, map_state_class
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -61,9 +62,9 @@ class IzypowerLinkSensor(CoordinatorEntity, SensorEntity):
         self.entity_description = SensorEntityDescription(
             key=meta.get("key"),
             name=meta.get("name"),
-            native_unit_of_measurement=meta.get("unit"),
-            device_class=meta.get("dev_class"),
-            state_class=meta.get("state_class"),
+            native_unit_of_measurement=normalize_unit(meta.get("unit")),
+            device_class=map_device_class(meta.get("dev_class")),
+            state_class=map_state_class(meta.get("state_class")),
         )
 
         host = coordinator.host
@@ -74,16 +75,12 @@ class IzypowerLinkSensor(CoordinatorEntity, SensorEntity):
 
         self._attr_name = meta.get("name")
 
-        self._attr_native_unit_of_measurement = meta.get("unit")
-        self._attr_device_class = meta.get("dev_class")
-        self._attr_state_class = meta.get("state_class")
-
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{host}_link_{link_sn}")},
             name=f"Izypower Titan ({host}) – Link ({link_sn})",
             manufacturer="Izypower",
             model="Titan Link",
-            via_device=(DOMAIN, coordinator.serial_number),
+            via_device=(DOMAIN, coordinator.device_identifier),
         )
 
     @property

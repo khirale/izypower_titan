@@ -1,7 +1,7 @@
 {
   "domain": "izypower_titan",
   "name": "Izypower Titan",
-  "version": "2.3.1",
+  "version": "2.3.3",
   "documentation": "https://github.com/khirale/izypower_titan",
   "issue_tracker": "https://github.com/khirale/izypower_titan",
   "codeowners": ["@khirale"],

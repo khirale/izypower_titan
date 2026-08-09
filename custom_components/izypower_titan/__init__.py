@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from typing import Any
-from datetime import timedelta
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
@@ -11,27 +10,101 @@ from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
     DOMAIN,
     PLATFORMS,
-    DEFAULT_SCAN_INTERVAL,
-    DEFAULT_MAX_CHARGE_POWER,
-    DEFAULT_MAX_DISCHARGE_POWER,
     CONF_TITAN_COUNT,
     CONF_OVERRIDE_RESPONSIBILITY,
     CHARGE_PER_TITAN,
     DISCHARGE_PER_TITAN,
     CONF_CONNECTION_MODE,
+    MODE_LOCAL,
     MODE_CLOUD,
     MAX_ABS_PER_TITAN,
     SOC_SECURITY_MIN,
     SOC_SECURITY_MAX,
 )
 from .coordinator import IzypowerTitanCoordinator
+from .cloud_api import IzyCloudAPI
 from .storage import TitanCalibrationStorage
 
 _LOGGER = logging.getLogger(__name__)
+
+SERVICES = [
+    "charge",
+    "discharge",
+    "stop",
+    "set_realtime_mode",
+    "set_intelligent_mode",
+    "set_selfconsumed_mode",
+    "cloud_charge_manual",
+    "cloud_discharge_manual",
+    "set_cloud_max_charge",
+    "set_cloud_max_discharge",
+    "set_cloud_intelligent_mode",
+    "set_cloud_standby_mode",
+    "set_register_off_grid",
+    "set_register_led",
+    "set_soc_security",
+    "set_max_power",
+    "set_max_discharge_power",
+    "cluster_rebalance",
+]
+
+STALE_SUFFIXES_BY_MODE = {
+    MODE_CLOUD: [
+        "realtime",
+        "stop",
+        "self-consumed mode",
+        "charge",
+        "discharge",
+        "charge_soc_limit",
+        "max_power",
+        "max_discharge_power",
+    ],
+    MODE_LOCAL: [
+        "cloud_charge",
+        "cloud_discharge",
+        "cloud_auto",
+        "standby mode",
+        "cloud_charge_limit",
+        "cloud_discharge_limit",
+        "cloud_connectivity",
+    ],
+}
+
+
+def _async_cleanup_stale_entities(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    mode = entry.data.get(CONF_CONNECTION_MODE)
+    stale_suffixes = STALE_SUFFIXES_BY_MODE.get(mode)
+    if not stale_suffixes:
+        return
+
+    cluster = entry.data.get("cluster", {})
+    hosts = [cluster.get("master")] + cluster.get("slaves", [])
+
+    stale_unique_ids = {
+        f"{DOMAIN}_{host}_{suffix}"
+        for host in hosts
+        if host
+        for suffix in stale_suffixes
+    }
+
+    ent_reg = er.async_get(hass)
+    removed = 0
+    for reg_entry in er.async_entries_for_config_entry(ent_reg, entry.entry_id):
+        if reg_entry.unique_id in stale_unique_ids:
+            _LOGGER.info(
+                "Purge entité orpheline (changement de mode → %s) : %s",
+                mode, reg_entry.entity_id,
+            )
+            ent_reg.async_remove(reg_entry.entity_id)
+            removed += 1
+
+    if removed:
+        _LOGGER.info("%d entité(s) de l'ancien profil supprimée(s) du registre", removed)
 
 def build_charge_schema(max_power: int) -> vol.Schema:
     return vol.Schema({
@@ -101,7 +174,6 @@ SERVICE_CLUSTER_REBALANCE_SCHEMA = vol.Schema({
 })
 
 
-
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     return True
 
@@ -134,6 +206,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hosts = [master] + slaves
         hass.data[DOMAIN][entry.entry_id] = {}
 
+        shared_cloud_api = IzyCloudAPI(
+            username=entry.data.get("username", ""),
+            password=entry.data.get("password", ""),
+            session=async_get_clientsession(hass),
+        )
+
         for host in hosts:
             coordinator = IzypowerTitanCoordinator(
                 hass,
@@ -141,6 +219,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 host=host,
                 max_charge=final_max_charge,
                 max_discharge=final_max_discharge,
+                cloud_api=shared_cloud_api,
             )
 
             calibration_storage = TitanCalibrationStorage(hass, entry.entry_id, host)
@@ -164,10 +243,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     "Initial Cloud login error during setup: %s", err
                 )
 
+        _async_cleanup_stale_entities(hass, entry)
+
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
         entry.async_on_unload(entry.add_update_listener(async_update_listener))
 
-        await async_register_services(hass)
+        if not hass.services.has_service(DOMAIN, "charge"):
+            await async_register_services(hass)
 
         _LOGGER.info(
             "Izypower Titan setup complete – %s Titans (%s)",
@@ -177,11 +259,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         return True
 
-    except Exception as err:
-        _LOGGER.exception("Unexpected error occurred while setting config entry.")
+    except Exception:
         if entry.entry_id in hass.data.get(DOMAIN, {}):
             del hass.data[DOMAIN][entry.entry_id]
-        raise ConfigEntryNotReady from err
+        raise
 
 
 async def execute_on_cluster_coordinators(
@@ -285,6 +366,8 @@ async def async_register_services(hass: HomeAssistant) -> None:
             except KeyError:
                 raise HomeAssistantError(f"Titan introuvable (entry_id={entry_id}, host={host})")
 
+        device_id = call.data.get("device_id")
+
         entity_id = call.data.get("entity_id")
         if entity_id:
             entity_reg = er.async_get(hass)
@@ -293,9 +376,7 @@ async def async_register_services(hass: HomeAssistant) -> None:
             if not entity or not entity.device_id:
                 raise HomeAssistantError("entity_id invalide ou non associé à un device")
 
-            call.data["device_id"] = entity.device_id
-
-        device_id = call.data.get("device_id")
+            device_id = entity.device_id
         if device_id:
             device_reg = dr.async_get(hass)
             device = device_reg.async_get(device_id)
@@ -593,32 +674,12 @@ async def async_register_services(hass: HomeAssistant) -> None:
             len(coordinators), soc, max_c, max_d,
         )
 
-    entries = hass.data[DOMAIN].values()
-    first_entry = next(iter(entries), None)
+    abs_max = 3 * MAX_ABS_PER_TITAN
 
-    first_coordinator = (
-        next(iter(first_entry.values()), None)
-        if first_entry
-        else None
-    )
-
-    charge_limit = getattr(first_coordinator, "max_charge_power", DEFAULT_MAX_CHARGE_POWER) if first_coordinator else DEFAULT_MAX_CHARGE_POWER
-    discharge_limit = getattr(first_coordinator, "max_discharge_power", DEFAULT_MAX_DISCHARGE_POWER) if first_coordinator else DEFAULT_MAX_DISCHARGE_POWER
-    max_power_limit = charge_limit
-    
-    if first_coordinator:
-        override = first_coordinator.config_entry.data.get(CONF_OVERRIDE_RESPONSIBILITY, False)
-        if override:
-            max_discharge_power_limit = MAX_ABS_PER_TITAN
-        else:
-            max_discharge_power_limit = DISCHARGE_PER_TITAN
-    else:
-        max_discharge_power_limit = DISCHARGE_PER_TITAN
-
-    charge_schema = build_charge_schema(charge_limit)
-    discharge_schema = build_discharge_schema(discharge_limit)
-    max_power_schema = build_max_power_schema(max_power_limit)
-    max_discharge_power_schema = build_max_discharge_power_schema(max_discharge_power_limit)
+    charge_schema = build_charge_schema(abs_max)
+    discharge_schema = build_discharge_schema(abs_max)
+    max_power_schema = build_max_power_schema(abs_max)
+    max_discharge_power_schema = build_max_discharge_power_schema(abs_max)
 
     hass.services.async_register(DOMAIN, "charge", charge, schema=charge_schema)
     hass.services.async_register(DOMAIN, "discharge", discharge, schema=discharge_schema)
@@ -653,42 +714,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         for coordinator in coordinators.values():
             await coordinator.async_shutdown()
 
+        if not hass.data[DOMAIN]:
+            for service in SERVICES:
+                hass.services.async_remove(DOMAIN, service)
+
     return unload_ok
 
 
 async def async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    coordinators = hass.data[DOMAIN][entry.entry_id]
-
-    new_interval = entry.options.get("scan_interval", DEFAULT_SCAN_INTERVAL)
-    titan_count = entry.data.get(CONF_TITAN_COUNT, 1)
-    override = entry.data.get(CONF_OVERRIDE_RESPONSIBILITY, False)
-
-    max_abs = titan_count * MAX_ABS_PER_TITAN
-
-    for coordinator in coordinators.values():
-        coordinator.update_interval = timedelta(seconds=new_interval)
-
-        if override:
-            charge = entry.options.get(
-                DEFAULT_MAX_CHARGE_POWER,
-                titan_count * CHARGE_PER_TITAN,
-            )
-            discharge = entry.options.get(
-                DEFAULT_MAX_DISCHARGE_POWER,
-                titan_count * DISCHARGE_PER_TITAN,
-            )
-
-            coordinator.max_charge_power = int(min(int(charge), int(max_abs)))
-            coordinator.max_discharge_power = int(min(int(discharge), int(max_abs)))
-
-        else:
-            coordinator.max_charge_power = titan_count * CHARGE_PER_TITAN
-            coordinator.max_discharge_power = titan_count * DISCHARGE_PER_TITAN
-
-    _LOGGER.info(
-        "Izypower Titan options updated – scan_interval=%ss, charge=%sW, discharge=%sW, max_abs=%sW",
-        new_interval,
-        coordinator.max_charge_power,
-        coordinator.max_discharge_power,
-        max_abs,
-    )
+    _LOGGER.info("Izypower Titan options updated – reloading entry %s", entry.entry_id)
+    await hass.config_entries.async_reload(entry.entry_id)

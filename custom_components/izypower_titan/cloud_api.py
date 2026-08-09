@@ -1,6 +1,4 @@
-import asyncio
 import aiohttp
-import json
 import logging
 import time
 import jwt
@@ -70,7 +68,7 @@ class IzyCloudAPI:
             return False
         try:
             decoded = jwt.decode(self.token, options={"verify_signature": False})
-            return decoded.get("exp", 0) > (time.time() - 60)
+            return decoded.get("exp", 0) > (time.time() + 60)
         except Exception:
             return False
 
@@ -101,7 +99,9 @@ class IzyCloudAPI:
         headers = await self.async_get_headers()
 
         url_mode = f"{self.battery_url}/mode/{device_id}"
-        await self.session.post(url_mode, json={"ctr_mode": 1}, headers=headers, timeout=self.timeout)
+        async with self.session.post(url_mode, json={"ctr_mode": 1}, headers=headers, timeout=self.timeout) as resp_mode:
+            if resp_mode.status != 200:
+                raise Exception(f"Set ctr_mode=1 failed: HTTP {resp_mode.status}")
 
         url_val = f"{self.battery_url}/manual_mode_value/{device_id}"
         payload_power = {"mode": 1, "power": power_watts}
@@ -111,7 +111,9 @@ class IzyCloudAPI:
     async def async_cloud_manual_standby(self, device_id: str) -> Dict[str, Any]:
         headers = await self.async_get_headers()
         url_mode = f"{self.battery_url}/mode/{device_id}"
-        await self.session.post(url_mode, json={"ctr_mode": 1}, headers=headers, timeout=self.timeout)
+        async with self.session.post(url_mode, json={"ctr_mode": 1}, headers=headers, timeout=self.timeout) as resp_mode:
+            if resp_mode.status != 200:
+                raise Exception(f"Set ctr_mode=1 failed: HTTP {resp_mode.status}")
 
         url_val = f"{self.battery_url}/manual_mode_value/{device_id}"
         payload_power = {"mode": 0, "power": 0}
@@ -122,7 +124,9 @@ class IzyCloudAPI:
         headers = await self.async_get_headers()
 
         url_mode = f"{self.battery_url}/mode/{device_id}"
-        await self.session.post(url_mode, json={"ctr_mode": 1}, headers=headers, timeout=self.timeout)
+        async with self.session.post(url_mode, json={"ctr_mode": 1}, headers=headers, timeout=self.timeout) as resp_mode:
+            if resp_mode.status != 200:
+                raise Exception(f"Set ctr_mode=1 failed: HTTP {resp_mode.status}")
 
         url_val = f"{self.battery_url}/manual_mode_value/{device_id}"
         payload_power = {"mode": 2, "power": power_watts}

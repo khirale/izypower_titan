@@ -2,13 +2,11 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorDeviceClass,
     SensorEntityDescription,
-    SensorStateClass,
 )
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.util import dt as dt_util
 from dataclasses import dataclass, field
-from typing import Any
 from homeassistant.const import (
     UnitOfEnergy,
 )
@@ -158,12 +156,6 @@ class IzypowerSensorEntity(CoordinatorEntity, SensorEntity):
             if value == 9999:
                 return 0
             return int(value)
-
-        if self.entity_description.key == "0":
-            try:
-                return str(int(value))
-            except (TypeError, ValueError):
-                return str(raw_value)
 
         return value
 

@@ -19,14 +19,12 @@ class IzypowerAPI:
         config_param = json.dumps({"t": keys}).replace(" ", "")
         url = f"{self.base_url}/Indevolt.GetData?config={config_param}"
         
-        #_LOGGER.debug("Titan request → %s", url)
 
         try:
             async with self.session.post(url, timeout=self.timeout) as response:
                 status = response.status
                 raw_text = await response.text()
 
-                #_LOGGER.debug("Titan response ← status=%s, raw=%s", status,  raw_text)
 
                 if status != 200:
                     raise Exception(f"HTTP {status}: {raw_text}")
@@ -42,7 +40,6 @@ class IzypowerAPI:
                     _LOGGER.error("Titan JSON is not a dict (%s) | value=%s", type(data), data)
                     raise Exception("Invalid JSON structure")
 
-                #_LOGGER.debug("Titan JSON parsed successfully (%d keys)", len(data))
 
                 return data
 
